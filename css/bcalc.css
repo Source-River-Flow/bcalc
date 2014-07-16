@@ -1,0 +1,543 @@
+body {
+	text-align:center;
+	background-color:#244359;
+	font-family:trebuchet ms, lucida sans, sans-serif;
+	font-size:11pt;
+}
+.clear {
+	clear:both;
+}
+
+a.link, a.faux_link, .faux_link {
+	color:blue;
+	text-decoration:underline;
+	cursor:pointer;
+}
+img.addequation {
+	position:relative;
+	top:4px;
+	margin-right:5px;
+}
+h3 {
+	position:relative;
+	margin-top:0px;
+	margin-bottom:5px;
+	font-size:14pt;
+	border-bottom:1px solid #DFDFDF;
+}
+h4 {
+	font-size:12pt;
+	margin-bottom:0px;
+	background-color:#dfdfdf;
+	padding:3px;
+}
+
+#site-wrapper {
+	margin:0 auto;
+	width:1345px;
+	text-align:left;
+}
+
+#leftBanner{
+	position:relative;
+	width:160px;
+	height:600px;
+	padding-top:92px;
+	padding-right:20px;
+	float:left;
+}
+
+
+#rightBanner{
+	position:relative;
+	width:160px;
+	height:600px;
+	padding-top:92px;
+	padding-left:20px;
+	float:left;
+}
+
+#mainContent {
+	position:relative;
+	min-width:680px;
+	float:left;
+}
+
+#header {
+	margin-bottom:10px;
+}
+
+#header #logo {
+	position:relative;
+	float:left;
+	background-image:url(../img/logo.png);
+	width:305px;
+	height:60px;
+	left:15px;
+	margin-bottom:5px;
+}
+.left {
+	position:relative;
+	float:left;
+}
+
+/****************************************************************
+/* MAIN NAVIGATION
+*/
+#main-tabs {
+	float:right;
+	position:relative;
+	right:15px;
+	top:10px;
+}
+
+#main-tabs ul {
+	padding:0px;
+	margin:0px;
+	font-weight:bold;
+	color:white;
+	font-size:12pt;
+	font-family:arial, helvetica, sans-serif;
+}
+#main-tabs ul li {
+	display:block;
+	float:left;
+	list-style-type:none;
+	text-align:right;
+	margin:0px 10px 0px 10px;
+}
+
+#main-tabs ul li a {
+	display: inline-block; /* needed to trigger IE haslayout */
+	text-decoration:none;
+	padding:0px 7px 0px 7px;
+}
+#main-tabs ul li a:hover, #main-tabs ul li a.activated, #main-tabs ul li a:active {
+	color:#52b3cb;
+	border-bottom:5px solid #52b3cb;
+}
+#main-tabs ul li a:link, #main-tabs ul li a:visited, #main-tabs ul li a:hover {
+	color:#dfdfdf;
+}
+
+/****************************************************************
+/* FUNCTION NAVIGATION
+*/
+#function-tabs {
+	float:left;
+	position:relative;
+	margin-top:5px;
+	top:2px;
+	left:-1px;
+}
+
+#function-tabs ul {
+	padding:0px;
+	margin:0px;
+	font-weight:bold;
+	font-style:italic;
+	color:white;
+	font-size:10pt;
+	font-family:arial, helvetica, sans-serif;
+}
+#function-tabs ul li {
+	display:block;
+	float:left;
+	list-style-type:none;
+	text-align:center;
+	height:19px;
+	width:78px;
+	cursor:pointer;
+	padding-top:3px;
+	background:transparent url(../img/top_tabs.png) no-repeat;
+}
+/* IE hack
+* html #function-tabs ul li {
+	\height:21px;
+}
+*/
+
+#function-tabs ul li.notSelected {
+	background-position:0 0;
+}
+#function-tabs ul li:hover, #function-tabs ul li:active, #function-tabs ul li.selected {
+	background-position:0 -23px;
+}
+
+/****************************************************************
+/* MAIN CONTENT
+*/
+div.selectedContent{
+	display: block;
+}
+div.notSelectedContent{
+	display: none;
+}
+
+#left {
+	position:relative;
+	float:left;
+	width:468px;
+	margin-right:5px;
+}
+#right {
+	position:relative;
+	float:left;
+	width:512px;
+	background-color:#f5f5f5;
+}
+#content {
+	width:448px;
+	padding:10px;
+	background-color:#f5f5f5;
+}
+
+#block-content-header {
+	margin-top:10px;
+	width:600px;
+	height:15px;
+	background-image:url(../img/block-header.png);
+}
+#block-content {
+	width:570px;
+	padding:0px 15px 0px 15px;
+	background-color:#F5F5F5;
+}
+#block-content-footer {
+	width:600px;
+	height:15px;
+	background-image:url(../img/block-footer.png);
+}
+#block-content-header, #block-content, #block-content-footer {
+	position:relative;
+	left:50px;
+}
+#block-content img {
+	border:2px solid #000000;
+}
+/* IE hack
+* html #content {
+	\width: 468px;
+}
+*/
+
+#share {
+	width:auto;
+	padding:0px 10px 10px 10px;
+}
+
+#legend {
+	position:relative;
+	margin-bottom:5px;
+	left:40px;
+	width:300px;
+	padding:1px 2px 3px 1px;
+	font-size:8pt;
+	background-color:#ffffff;
+	border:1px solid #f5f5f5;
+}
+
+.legend-icon {
+	position:relative;
+	top:4px;
+	margin-left:10px;
+	margin-right:3px;
+}
+
+#calc {
+	width:auto;
+	padding:10px 10px 0px 10px;
+	background-color:#f5f5f5;
+	margin-top:5px;
+}
+
+#fnSelect {
+	display:block;
+	position:absolute;
+	top:415px;
+	left:195px;
+	width:300px;
+	z-index:0;
+	background-color:#dfdfdf;
+	padding:0px 5px 5px 5px;
+	margin: 0px;
+}
+/****************************************************************
+/* FLYOUT MENUS
+*/
+.features {
+	position:relative;
+	display:block;
+	float:left;
+	width:80px;
+	height:25px;
+	text-align:left;
+	margin:3px 0px 2px 5px;
+}
+#symbols_container {
+	position:relative;
+	float:right;
+	width:250;
+	text-align:left;
+	position:relative;
+	z-index:10;
+}
+.symbols {
+	display:none;
+	position:absolute;
+	top:0px;
+	left:0px;
+	z-index:1;
+	padding:7px;
+	background-color:#CFCFCF;
+	border:1px solid #BFBFBF;
+}
+
+.symbols input {
+	width:70px;
+	margin:1px;
+}
+
+.colorbox {
+	position:relative;
+	float:left;
+	display:inline-block;
+	overflow:hidden;
+	width:15px;
+	height:15px;
+	border:1px solid #000000;
+}
+.colorbox img {
+	border:0px;
+	width:10px;
+	height:10px;
+}
+.advanced_box {
+	position:relative;
+	margin-left:20px;
+	float:left;
+}
+
+
+/****************************************************************
+/* FORMS
+*/
+label {
+	display:block;
+	float:left;
+	margin:2px 4px 6px 0px;
+	text-align:left;
+	font-weight:bold;
+}
+label {
+    width:90px;
+}
+label.fx {
+	width:40px;
+}
+input[type=text] {
+	position:relative;
+	float:left;
+}
+input[type=text] {
+	width:280px;
+}
+.equation, input[type=text].equation { /* IE does not recognize attribute selectors, class needed */
+	position:relative;
+	float:left;
+	width:310px;
+}
+#url, input[type=text]#url {
+	width:300px;
+	margin-left:5px;
+}
+input[type=text].short {
+	width:40px;
+}
+br {
+	clear:left;
+}
+#share-url {
+	position:relative;
+	float:left;
+	margin-top:5px;
+	display:none;
+	clear:both;
+}
+
+/****************************************************************
+/* COLOR PICKER
+visibility:hidden;
+*/
+.cp_colorpickerbox {
+	border-color: #000000;
+	border: solid 1px;
+	position:absolute;
+	display:none;
+	top:20px;
+	left:0px;
+	padding:10px;
+	width:291px;
+	height:165px;
+	background-color:#FFFFFF;
+	z-index:1;
+}
+.cp_currentcolor {
+	position:absolute;
+	top:35px;
+	left:160px;
+	font-size:11pt;
+}
+.cp_colorbox {
+	position: absolute;
+	overflow: hidden;
+	top: 55px;
+	left: 160px;
+	font-size: 40px;
+}
+.cp_colorbox img {
+	border: 0px;
+	width: 138px;
+	height: 20px;
+}
+.cp_spectrumbox {
+	position: absolute;
+	overflow: hidden;
+	font-size: 40px;
+}
+.cp_spectrumbox img {
+	border: 0px;
+	width: 3px;
+	height: 15px;
+}
+.cp_satbrightbox {
+	position: absolute;
+	overflow: hidden;
+	top: 35px;
+	left: 10px;
+}
+.cp_satbrightbox img {
+	border: 0px;
+	width: 8px;
+	height: 8px;
+}
+.cp_hexvaluebox {
+	position: absolute;
+	margin-top:5px;
+	top: 80px;
+	left: 160px;
+	font-size: 12px;
+	height:25px;
+}
+.cp_hexvaluebox input {
+	position:relative;
+	margin-left:5px;
+	width:60px;
+	font-size:14px;
+	padding:2px;
+}
+.cp_controlbox {
+	position: absolute;
+	top: 120px;
+	left: 170px;
+}
+.cp_controlbox input {
+	width: 60px;
+	height: 20px;
+	padding:2px;
+	font-size: 10pt;
+	background-color: #efefef;
+	font-weight:bold;
+}
+
+/****************************************************************
+/* Plotting Table
+background-color:#FF0000;
+*****************************************************************/
+#tables_content div {
+	white-space:nowrap;
+}
+
+#tables_content .container {
+	background-color:#DFDFDF;
+	padding:5px;
+	overflow:auto;
+	width:440px;
+	height:250px;
+	margin-bottom:5px;
+}
+
+#tables_content .rowHead {
+	font-weight:bold;
+}
+
+#tables_content .colHead {
+	font-weight:bold;
+}
+
+/****************************************************************
+/* CONSOLE
+*/
+#concont div {
+	white-space:nowrap;
+}
+#concont {
+	text-align:center;
+	width:445px;
+	height:235px;
+}
+#concont .in {
+	float:left;
+	clear:left;
+}
+#concont .out {
+	float:right;
+	clear:right;
+}
+#concont .msg {
+	float:left;
+	clear:both;
+}
+
+#concont .container {
+	background-color:#DFDFDF;
+	padding:5px;
+	overflow:auto;
+	width:435px;
+	height:150px;
+	margin-bottom:5px;
+}
+/* IE hack
+* html #concont .container {
+	\width: 445px;
+}
+*/
+#concont textarea {
+	width:440px;
+	overflow:auto;
+}
+
+/****************************
+	Printing
+*/
+#printDiv{
+	position:absolute;
+	top:0px;
+	left:520px;
+	width:400px;
+	height:498px;
+	padding: 5px;
+	border:2px solid #DFDFDF;
+}
+#printpolar{
+	display: none;
+	padding: 5px;
+}
+#printparam{
+	display: none;
+	padding: 5px;
+}
+#printfx{
+	display: none;
+	padding: 5px;
+}

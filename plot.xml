@@ -1,0 +1,2877 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg version="1.1" id="Layer_1"
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  x="0px" y="0px"
+  width="512px" height="512px"
+  viewBox="-256 -256 512 512"
+  xml:space="preserve"
+  contentScriptType="text/javascript"
+  scriptImplementation="browser"
+>
+
+<defs>
+<script type="text/javascript" xlink:href="js/test.js" />
+<script type="text/javascript">
+
+/********************************************************************
+  Notes on delete operator
+    https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Operators/Special_Operators/delete_Operator
+
+  JavaScript basically has two scopes for variables: global and local.
+    Variables assigned outside of a function are global, and variables
+    assigned inside of a function, using the var keyword, are local
+    (not rocket surgery). However, if you leave the var keyword off,
+    it assigns a global variable, regardless of where it’s declared.
+    http://opensoul.org/2008/9/4/the-importance-of-var-in-javascript
+  Trimming a string on JavaScript (TODO)
+    http://blog.stevenlevithan.com/archives/faster-trim-javascript
+********************************************************************/
+
+/********************************************************************
+  TODO LIST
+    Fix the rest of TODO
+    Check to make sure that division doesn't result in:
+      divide by zero
+      number too small resulting in zero
+    Consider tracking how many points we are using per plot and reducing that number (if possible)
+    Consider reducing quality when plotting or dragging to speed things up
+********************************************************************/
+
+
+/********************************************************************
+  Constants
+********************************************************************/
+//Colors
+var GREEN = top.GREEN;
+var RED = top.RED;
+var BLACK = top.BLACK;
+var GREY_BACK = top.GREY_BACK;
+var LIGHTGREY = top.LIGHTGREY;
+var GREY = top.GREY;
+var DIMGREY = top.DIMGREY;
+
+// Window size
+var WINDOW_WIDTH = 512;
+var WINDOW_HEIGHT = 512;
+
+// Initial Zoom and Scale
+var INITIAL_SCALE_UNIT = 32;
+var INITIAL_EDGE_VALUE = 8;
+
+// Links to namespaces and document
+var XMLNS = "http://www.w3.org/2000/svg";
+var ROOT = document.documentElement;
+
+//we can't zoom in more than 56 times due to the size limit of the numbers
+var MAX_ZOOM_LEVEL = 56;
+
+var TOLERANCE = 0.0000000001
+var ROUND_PRECISION = 7;
+//var H = .00000000001; //smaller -> more precise
+// TODO: One character global var???? perhaps something more descriptive
+
+// Various modes supported
+var DRAG_MODE = 0
+var INTERSECT_MODE = 1;
+var ZERO_MODE = 2;
+var MAX_MODE = 3;
+var MIN_MODE = 4;
+var TRACE_MODE = 5
+
+var TICKS_COUNT = 8;
+/***************************************************
+  switches to enable/disable features
+******************************************************/
+var ZOOMING_ANIMATION_DEFAULT = true;
+var zoomingAnimation = ZOOMING_ANIMATION_DEFAULT;
+var TRACE_MULTIPLE_DEFAULT = true;
+var traceMultiple = TRACE_MULTIPLE_DEFAULT;
+var IZMM_POINT_DEFAULT = true;
+var izmmPoint = IZMM_POINT_DEFAULT;
+var LAST_POINT_DEFUALT = true;
+var lastPoint = LAST_POINT_DEFUALT;
+var SHOW_TOOLBAR_DEFAULT = true;
+var showToolbar = SHOW_TOOLBAR_DEFAULT;
+var SHOW_NAVIGATION_TOOLS_DEFAULT = true;
+var showNavigationTools = SHOW_NAVIGATION_TOOLS_DEFAULT;
+var SHOW_MOUSE_POSITION_DEFAULT = true;
+var showMousePosition = SHOW_MOUSE_POSITION_DEFAULT;
+var SHOW_AXIS_NUMBERS_DEFAULT = true;
+var showAxisNumbers = SHOW_AXIS_NUMBERS_DEFAULT;
+var SHOW_GRIDLINES_DEFAULT = true;
+var showGridlines = SHOW_GRIDLINES_DEFAULT;
+var SHOW_AXIS_DEFAULT = true;
+var showAxis = SHOW_AXIS_DEFAULT;
+var LINE_WIDTH_DEFUALT = 1;
+var lineWidth = LINE_WIDTH_DEFUALT;
+var SHOW_DIALOG_DEFAULT = true;
+var dialogShowing = SHOW_DIALOG_DEFAULT;
+
+
+/********************************************************************
+  STYLES FOR VARIOUS COMPONENTS
+********************************************************************/
+
+// Used when a line is created for plottin (setting color
+//  is done at a layer leverl and will not over-ride this if set
+//  here)
+var PLOT_LINE_STYLE = {'stroke-width':1};
+
+// Used in resetAllColors()
+var GUI_RESET = {fill: LIGHTGREY};
+
+// Used in setMode
+var SET_MODE_SELECTED = {fill: DIMGREY};
+
+// used in drawBoxGrab(evt)
+var DRAG_BOX_STYLE = {stroke: "black", "stroke-width": 1, "stroke-dasharray": "2,2"};
+
+var INVISIBLE = {"display": "none"};
+var VISIBLE = {"display": "inline"};
+
+/********************************************************************
+  Allows HTML doc access to various internal functions
+********************************************************************/
+
+top.graph = graph;
+top.unplot = unplot;
+top.getCenter = getCenter;
+top.moveBox = moveBox;
+top.updateColor = updateColor;
+top.toggleVisibility = toggleVisibility;
+top.getFuncObjs = getFuncObjs;
+top.getValueToPixelScale = getValueToPixelScale;
+top.plotPointObj = plotPointObj;
+top.unplotTable = unplotTable;
+top.toggleLayer = toggleLayer;
+top.changeLineWidth = changeLineWidth;
+top.toggleExtras = toggleExtras;
+top.restoreDefaults = restoreDefaults;
+top.getOffset = getOffset;
+top.setInit = setInit;
+top.print = print;
+
+//top.plotPointArray = plotPointArray;
+function print() {
+	toggleLayer('toolbar',false);
+	toggleLayer('nav_tools',false);
+	toggleLayer('mouse_pos',false);
+  assignAttr(ROOT, {
+    "onmousedown":null,
+    "onmousemove":null,
+    "onmouseup":null,
+    cursor:"default"});	
+}
+
+function setInit(vArray){
+	valueToPixelScale = parseFloat(vArray[2]);
+	pixelToValueScale = parseFloat(1/valueToPixelScale);
+	offsetX = parseFloat(vArray[3]);
+	offsetY = parseFloat(vArray[4]);
+	var x = parseFloat(vArray[0]);
+	var y = parseFloat(vArray[1]);
+	setMinMax(x,y);
+	moveBox(x+offsetX,y+offsetY);
+}
+
+//given: centerX in pixel, centerY in pixel, VtoPScale as scale, givenOffsetX in pixel, givenOffsetY in pixel
+//return Xmin Ymin Xmax Ymax in value
+function setMinMax(x, y) {
+    curXMin = (x-WINDOW_WIDTH/2+offsetX) / valueToPixelScale;
+    curXMax = (x+WINDOW_WIDTH/2+offsetX) / valueToPixelScale;
+    curYMin = -(y+WINDOW_HEIGHT/2+offsetY) / valueToPixelScale;
+    curYMax = -(y-WINDOW_HEIGHT/2+offsetY) / valueToPixelScale;
+}
+
+
+function getOffset(){
+	return [offsetX, offsetY];
+}
+
+function getValueToPixelScale() {
+  return valueToPixelScale;
+}
+
+function getFuncObjs() {
+  return curFuncObjs;
+}
+
+// TODO THIS IS FOR FIREBUG CONSOLE ONLY (REMOVE ON PRODUCTION)
+top.setFBConsole = setFBConsole;
+
+/********************************************************************
+  Internal Global Variables
+********************************************************************/
+
+// TODO REMOVE ON PRODUCTION
+var DEBUG_FLAG = false;
+
+// TODO INCREMENT THIS DURING DEBUG ONLY TO KEEP TRACK OF ERROR STATES
+var errorCounter = 0;
+
+// Tracking Mouse Dragging
+// TODO Initial values?
+var dragging;
+var lastX;
+var lastY;
+
+//addon point storage
+var addonLast = [];
+
+// Lower and Upper Bound of Domain (x)
+var curXMin = -WINDOW_WIDTH/2; //in value, but we need to adjust by the origin to find the true value
+var curXMax = WINDOW_WIDTH/2;
+var absXMax = 0;
+var absXMin = 0;
+
+var curYMin = -WINDOW_HEIGHT/2;
+var curYMax = WINDOW_HEIGHT/2;
+var absYMax = 0;
+var absYMin = 0;
+
+var offsetX = 0; // for each zoom in, offset to the origin to avoid the limitation in svg canvas
+var offsetY = 0;
+
+// Coordinates beyond this limit are not graphed
+var SVG_Canvas_Limit = Math.pow(10, 6)-1;
+
+// Contains all the layers. Associative array
+var layers = new Array();
+
+//Contains all the children of layers['plots']
+//Each element is a group containing a series of Circle
+// that represents ONE WHOLE function.
+var plots = new Array();
+
+var curFuncObjs = null;
+
+// Collection of GUI elements
+var guiElements = new Array();
+
+//number ticks lists
+var xNumList = [];
+var yNumList = [];
+
+var currentMode = 0;
+
+// Track Scaling (currently affects drawing of circles)
+var pixelToValueScale = INITIAL_SCALE_UNIT;
+var valueToPixelScale = INITIAL_SCALE_UNIT;
+
+var current_Zoom_Level = 0;
+var traceArray = [];
+
+//Used fro animated zooming
+var curCenter = new Array();
+var animateTimer = 128;
+var isZooming = false;
+
+// Used by tableUtil.js
+var tablePlots = new Array();
+var tableObj = new Array();
+
+/********************************************************************
+  Entry-point call
+********************************************************************/
+init(ROOT);
+
+/********************************************************************
+  Helper
+  TODO: Adjust zooming
+********************************************************************/
+
+// Assigns mouse event attributes to the document
+function init(R) {
+
+  createLayers();
+  createGUI();
+  setMode(0);
+
+  var viewBox = ROOT.getAttribute('viewBox');
+  var viewBoxArray = viewBox.split(' ');
+  var newCornerX = parseInt(viewBoxArray[0]);
+  var newCornerY = parseInt(viewBoxArray[1]);
+  translate(layers['guiElementsLayer'],newCornerX, newCornerY);
+
+//  curXMin = -INITIAL_EDGE_VALUE;
+//  curXMax = INITIAL_EDGE_VALUE;
+//  curYMin = -INITIAL_EDGE_VALUE;
+//  curYMax = INITIAL_EDGE_VALUE;
+//  valueToPixelScale = INITIAL_SCALE_UNIT;
+//  pixelToValueScale = 1/INITIAL_SCALE_UNIT;
+//  moveBox(0, 0);
+  var urlvars = top.getURLVars();  
+  //use url variables or use initial values here;
+  if(urlvars['w'])
+    var initialize = urlvars['w'];
+  else
+    var initialize = [0,0,32,0,0];
+  if(urlvars['f0']) {
+		var j = 0;
+    for(i in urlvars){
+			if(i != 'w' &amp;&amp; i != 'print' &amp;&amp; i != 'sep'){
+				top.addEquation(urlvars[i]['t']);
+				var key = urlvars[i]['t']+"_eq"+j;
+				if(urlvars[i]['t'] == 'polar')
+					top.toggleTabs(top.document.getElementById('polar'));
+				if(urlvars[i]['t'] == 'param'){
+					top.toggleTabs(top.document.getElementById('parametric'));
+					var fs = urlvars[i]['f'].split(';');
+					top.document.getElementById(key).value = fs[0];
+					top.document.getElementById(key+'_y').value = fs[1];
+				}else{
+					top.document.getElementById(key).value = urlvars[i]['f'];
+				}
+				if(urlvars[i]['t'] != 'fx'){
+					top.document.getElementById(key+'_start').value = urlvars[i]['s'];
+					top.document.getElementById(key+'_end').value = urlvars[i]['e'];
+				}
+				top.document.getElementById('colorbox'+key).style.backgroundColor = urlvars[i]['c'];
+				top.changeColor(key,urlvars[i]['c'].substring(1));
+				if(urlvars[i]['v'] == 'false')
+					top.toggleVisibilityHandler(key+'_visi');
+				j++;
+			}
+		}
+		if(!urlvars['sep'])
+			top.plotSeparate = false;
+		top.generate_graph();
+		top.plotSeparate = true;
+  }
+  else {
+    // TODO Something magical
+		top.addEquation('fx');
+		top.addEquation('fx');
+  }
+  setInit(initialize);
+}
+
+/*****************************************************************
+  SVG tools
+******************************************************************/
+function objectCopy(oldobj) {
+  for (myvar in oldobj) {
+    this[myvar] = oldobj[myvar];
+  }
+}
+
+function translate(elem, xPos, yPos) {
+  elem.setAttribute('transform', "translate("+xPos+","+yPos+")");
+}
+
+function getMouseXValue(evt) {
+  return pixelToValue(valueToPixel(curXMin) + evt.clientX);
+}
+
+function getMouseYValue(evt) {
+  return pixelToValue(valueToPixel(curYMax) - evt.clientY);
+}
+
+//Limits number text 'num' to have 'lim' significant figures if the text of num is longer than 'len'
+function limitNumberText(num, len, lim) {
+  if (num.toString().length &gt; len) {
+    if (num &lt; 0) {
+      return num.toExponential(lim-1);
+    }
+    if (num &gt; 0) {
+      return num.toExponential(lim);
+    }
+  }
+  return num;
+}
+
+function createLayer(name, appendTo) {
+  var newLayer = document.createElementNS(XMLNS,"g");
+  layers[name] = newLayer;
+  appendTo.appendChild(newLayer);
+}
+
+function toggleLayer(name, checked) {
+  var displayStyle;
+
+  if (checked) {
+    displayStyle = VISIBLE;
+  }
+  else {
+    displayStyle = INVISIBLE;
+  }
+
+  switch (name) {
+
+    case 'toolbar':
+      assignAttr(layers['modeControls'], displayStyle);
+      break;
+
+    case 'nav_tools':
+      assignAttr(layers['navigationControls'], displayStyle);
+      break;
+
+    case 'mouse_pos':
+      assignAttr(guiElements['xMouseValue'], displayStyle);
+      assignAttr(guiElements['yMouseValue'], displayStyle);
+      break;
+
+    case 'labels':
+      assignAttr(layers['xNumbers'], displayStyle);
+      assignAttr(layers['yNumbers'], displayStyle);
+      break;
+
+    case 'grid_lines':
+      assignAttr(guiElements['grids'], displayStyle);
+      break;
+
+    case 'axis':
+      assignAttr(layers['axisLayer'], displayStyle);
+      break;
+
+    default:
+      break;
+
+  }
+}
+
+function createLayers() {
+  createLayer('backgroundLayer',ROOT);
+  createLayer('axisLayer',ROOT);
+  createLayer('plots',ROOT);
+  createLayer('xNumbers',ROOT);
+  createLayer('yNumbers',ROOT);
+  createLayer('addons',ROOT);
+  createLayer('guiElementsLayer',ROOT);
+  createLayer('drawBoxLayer',layers['guiElementsLayer']);
+  createLayer('navigationControls',layers['guiElementsLayer']);
+  createLayer('modeControls',layers['guiElementsLayer']);
+  createLayer('modeControlsText',layers['modeControls']);
+}
+
+// Creates a layer to graph on
+function createPlotLayer(plotID) {
+  // If the layer exists, removes it
+  if (plots[plotID] != undefined) {
+    layers['plots'].removeChild(plots[plotID]);
+  }
+
+  // Create a new layer to work with
+  plots[plotID] = document.createElementNS(XMLNS, "g");
+  // User should do "layers['plots'].appendChild(plots[plotID]);"
+
+  // Have to append later
+  return plots[plotID];
+}
+
+function removeAllPlots() {
+  for (var i in curFuncObjs) {
+    unplot(i);
+  }
+}
+
+function unplot(key) {
+  // TODO Optimize this - I believe jQuery (whether we use it for SVG or not) has a feature
+  //  that allows you to remove all elements of a type? Maybe worth a look
+  // TODO MORE CHECKING ON THE KEY
+  addonRemoveAll();
+  if (curFuncObjs != null) {
+    if (curFuncObjs[key] != null) {
+      if (curFuncObjs[key].fn != "") {
+        if (key in plots) {
+          layers['plots'].removeChild(plots[key]);
+          delete plots[key];
+        }
+      }
+      if (curFuncObjs[key].xFunc != null)
+        delete curFuncObjs[key].xFunc;
+      if (curFuncObjs[key].yFunc != null)
+        delete curFuncObjs[key].yFunc;
+      delete curFuncObjs[key];
+    }
+  }
+}
+
+function showDialog(text) {
+  if (dialogShowing) {
+    guiElements['guiDialogTextNode'].nodeValue = text;
+    assignAttr(guiElements['guiDialogText'], VISIBLE);
+    assignAttr(guiElements['guiDialogBox'], VISIBLE);
+  }
+}
+
+function hideDialog() {
+  if (dialogShowing) {
+    assignAttr(guiElements['guiDialogText'], INVISIBLE);
+    assignAttr(guiElements['guiDialogBox'], INVISIBLE);
+  }
+}
+
+function changeLineWidth(width) {
+  lineWidth = width;
+  replot();
+}
+
+function toggleExtras(name, checked) {
+  switch (name) {
+    case 'zoom_anim':
+      zoomingAnimation = checked;
+      break;
+
+    case 'multiple_trace':
+      traceMultiple = checked;
+      break;
+
+    case 'mmzi_point':
+      izmmPoint = checked;
+      break;
+
+    case 'keep_last_trace':
+      lastPoint = checked;
+      addonRemoveAll();
+      break;
+
+    case 'help_dialog':
+      dialogShowing = checked;
+      break;
+
+    default:
+      break;
+
+  }
+}
+
+function restoreDefaults() {
+  var displayStyle = VISIBLE;
+  assignAttr(layers['modeControls'], displayStyle);
+  assignAttr(layers['navigationControls'], displayStyle);
+  assignAttr(guiElements['xMouseValue'], displayStyle);
+  assignAttr(guiElements['yMouseValue'], displayStyle);
+  assignAttr(layers['xNumbers'], displayStyle);
+  assignAttr(layers['yNumbers'], displayStyle);
+  assignAttr(guiElements['grids'], displayStyle);
+  assignAttr(layers['axisLayer'], displayStyle);
+
+  zoomingAnimation = ZOOMING_ANIMATION_DEFAULT;
+  traceMultiple = TRACE_MULTIPLE_DEFAULT;
+  izmmPoint = IZMM_POINT_DEFAULT;
+  lastPoint = LAST_POINT_DEFUALT;
+  showToolbar = SHOW_TOOLBAR_DEFAULT;
+  showNavigationTools = SHOW_NAVIGATION_TOOLS_DEFAULT;
+  showMousePosition = SHOW_MOUSE_POSITION_DEFAULT;
+  showAxisNumbers = SHOW_AXIS_NUMBERS_DEFAULT;
+  showGridlines = SHOW_GRIDLINES_DEFAULT;
+  showAxis = SHOW_AXIS_DEFAULT;
+  dialogShowing = SHOW_DIALOG_DEFAULT;
+	top.plotSeparate = true;
+	
+  lineWidth = LINE_WIDTH_DEFUALT;
+  replot();
+
+  top.resetAdvanced();
+}
+
+/********************************************************************
+  Create GUI elements
+  TODO: Adjust position of X and Y value
+********************************************************************/
+function createGUI() {
+  // Create GUI elements
+
+  var xAxis = document.createElementNS(XMLNS,"line");
+  var yAxis = document.createElementNS(XMLNS,"line");
+
+  var xMouseValue = document.createElementNS(XMLNS,"text");
+  var yMouseValue = document.createElementNS(XMLNS,"text");
+
+  var guiDialogBox = document.createElementNS(XMLNS,"rect");
+  var guiDialogText = document.createElementNS(XMLNS,"text");
+  var guiDialogTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiResetBox = document.createElementNS(XMLNS,"rect");
+  var guiResetText = document.createElementNS(XMLNS,"text");
+  var guiResetTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiOriginBox = document.createElementNS(XMLNS,"rect");
+  var guiOriginText = document.createElementNS(XMLNS,"text");
+  var guiOriginTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiZoomInBox = document.createElementNS(XMLNS,"rect");
+  var guiZoomInPlusHoriz = document.createElementNS(XMLNS,"rect");
+  var guiZoomInPlusVert = document.createElementNS(XMLNS,"rect");
+
+  var guiZoomOutBox = document.createElementNS(XMLNS,"rect");
+  var guiZoomOutMinus = document.createElementNS(XMLNS,"rect");
+
+  var guiNavigationTray = document.createElementNS(XMLNS,"rect");
+
+  var guiGrabBox = document.createElementNS(XMLNS,"rect");
+  var guiGrabText = document.createElementNS(XMLNS,"text");
+  var guiGrabTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiIntersectBox = document.createElementNS(XMLNS,"rect");
+  var guiIntersectText = document.createElementNS(XMLNS,"text");
+  var guiIntersectTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiZeroBox = document.createElementNS(XMLNS,"rect");
+  var guiZeroText = document.createElementNS(XMLNS,"text");
+  var guiZeroTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiMaxBox = document.createElementNS(XMLNS,"rect");
+  var guiMaxText = document.createElementNS(XMLNS,"text");
+  var guiMaxTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiMinBox = document.createElementNS(XMLNS,"rect");
+  var guiMinText = document.createElementNS(XMLNS,"text");
+  var guiMinTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  var guiTraceBox = document.createElementNS(XMLNS,"rect");
+  var guiTraceText = document.createElementNS(XMLNS,"text");
+  var guiTraceTextProperties = document.createElementNS(XMLNS,"tspan");
+
+  // Assign atrributes
+
+  assignAttr(xAxis, { id:"xAxis",
+    x1:-WINDOW_WIDTH/2,
+    y1:0,
+    x2:WINDOW_WIDTH/2,
+    y2:0,
+    stroke:DIMGREY,
+    "stroke-width":2});
+
+  assignAttr(yAxis, { id:"yAxis",
+    x1:0,
+    y1:-WINDOW_HEIGHT/2,
+    x2:0,
+    y2:WINDOW_HEIGHT/2,
+    stroke:DIMGREY,
+    "stroke-width":2});
+
+  assignAttr(xMouseValue, { id:"xMouseValue",
+    x:"10",
+    y:"480",
+    fill:GREY,
+    "font-size":13,
+    "font-family":"sans-serif"});
+
+  assignAttr(yMouseValue, { id:"yMouseValue",
+    x:"10",
+    y:"500",
+    fill:GREY,
+    "font-size":13,
+    "font-family":"sans-serif"});
+
+  assignAttr(guiDialogBox, { id:"guiDialogBox",
+    x:96,
+    y:10,
+    rx:5,
+    ry:5,
+    height:20,
+    width:320,
+    fill:LIGHTGREY,
+    display:"none"});
+
+  assignAttr(guiDialogText, { id:"guiDialogText",
+    x:256,
+    y:24,
+    "text-anchor":"middle",
+    "font-size":11,
+    display:"none"});
+
+  assignAttr(guiDialogTextProperties, { id:"guiDialogTextProperties",
+    "font-family":"sans-serif",
+    fill:"black"});
+
+  assignAttr(guiResetBox, { id:"guiResetBox",
+    x:10,
+    y:10,
+    rx:5,
+    ry:5,
+    height:20,
+    width:40,
+    fill:GREY,
+    "onmouseover":"fillBlack(guiElements['guiResetTextProperties']);showDialog('Reset window view')",
+    "onmouseout":"fillWhite(guiElements['guiResetTextProperties']);hideDialog()",
+    "onclick":"reset()"});
+
+  assignAttr(guiResetText, { id:"guiResetText",
+    x:13,
+    y:24,
+    "font-size":12,
+    "onmouseover":"fillBlack(guiElements['guiResetTextProperties']);showDialog('Reset window view')",
+    "onmouseout":"fillWhite(guiElements['guiResetTextProperties']);hideDialog()",
+    "onclick":"reset()"});
+
+  assignAttr(guiResetTextProperties, { id:"guiResetTextProperties",
+    "font-family":"sans-serif",
+    "font-weight":"bold",
+    fill:"white"});
+
+  assignAttr(guiOriginBox, { id:"guiOriginBox",
+    x:10,
+    y:35,
+    rx:5,
+    ry:5,
+    height:20,
+    width:40,
+    fill:GREY,
+    "onmouseover":"fillBlack(guiElements['guiOriginTextProperties']);showDialog('Center origin')",
+    "onmouseout":"fillWhite(guiElements['guiOriginTextProperties']);hideDialog()",
+    "onclick":"moveToOrigin()"});
+
+  assignAttr(guiOriginText, { id:"guiOriginText",
+    x:12,
+    y:49,
+    "font-size":12,
+    "onmouseover":"fillBlack(guiElements['guiOriginTextProperties']);showDialog('Center origin')",
+    "onmouseout":"fillWhite(guiElements['guiOriginTextProperties']);hideDialog()",
+    "onclick":"moveToOrigin()"});
+
+  assignAttr(guiOriginTextProperties, { id:"guiOriginTextProperties",
+    "font-family":"sans-serif",
+    "font-weight":"bold",
+    fill:"white"});
+
+  assignAttr(guiZoomInBox, { id:"guiZoomInBox",
+    x:20,
+    y:60,
+    rx:5,
+    ry:5,
+    height:20,
+    width:20,
+    fill:GREY,
+    "onmouseover":"fillBlack(guiElements['guiZoomInPlusHoriz']);fillBlack(guiElements['guiZoomInPlusVert']);showDialog('Zoom in')",
+    "onmouseout":"fillWhite(guiElements['guiZoomInPlusHoriz']);fillWhite(guiElements['guiZoomInPlusVert']);hideDialog()",
+    "onclick":"zoomIn()"});
+
+  assignAttr(guiZoomInPlusHoriz, { id:"guiZoomInPlusHoriz",
+    x:24,
+    y:69,
+    height:2,
+    width:12,
+    fill:"white",
+    "onmouseover":"fillBlack(guiElements['guiZoomInPlusHoriz']);fillBlack(guiElements['guiZoomInPlusVert']);showDialog('Zoom in')",
+    "onmouseout":"fillWhite(guiElements['guiZoomInPlusHoriz']);fillWhite(guiElements['guiZoomInPlusVert']);hideDialog()",
+    "onclick":"zoomIn()"});
+
+  assignAttr(guiZoomInPlusVert, { id:"guiZoomInPlusVert",
+    x:29,
+    y:64,
+    height:12,
+    width:2,
+    fill:"white",
+    "onmouseover":"fillBlack(guiElements['guiZoomInPlusHoriz']);fillBlack(guiElements['guiZoomInPlusVert']);showDialog('Zoom in')",
+    "onmouseout":"fillWhite(guiElements['guiZoomInPlusHoriz']);fillWhite(guiElements['guiZoomInPlusVert']);hideDialog()",
+    "onclick":"zoomIn()"});
+
+  assignAttr(guiZoomOutBox, { id:"guiZoomOutBox",
+    x:20,
+    y:85,
+    rx:5,
+    ry:5,
+    height:20,
+    width:20,
+    fill:GREY,
+    "onmouseover":"fillBlack(guiElements['guiZoomOutMinus']);showDialog('Zoom out')",
+    "onmouseout":"fillWhite(guiElements['guiZoomOutMinus']);hideDialog()",
+    "onclick":"zoomOut()"});
+
+  assignAttr(guiZoomOutMinus, { id:"guiZoomOutMinus",
+    x:24,
+    y:94,
+    height:2,
+    width:12,
+    fill:"white",
+    "onmouseover":"fillBlack(guiElements['guiZoomOutMinus']);showDialog('Zoom out')",
+    "onmouseout":"fillWhite(guiElements['guiZoomOutMinus']);hideDialog()",
+    "onclick":"zoomOut()"});
+
+  assignAttr(guiNavigationTray, { id:"guiNavigationTray",
+    x:473,
+    y:10,
+    rx:5,
+    ry:5,
+    height:178, //increase 4 pixels
+    width:30,
+    fill:LIGHTGREY
+  });
+
+  assignAttr(guiGrabBox, { id:"guiGrabBox",
+    x:474,
+    y:15,
+    height:28,
+    width:28,
+    fill:LIGHTGREY,
+    "onmouseover":"strokeBlack(guiElements['handIcon']);showDialog('Drag the graph to change the current view')",
+    "onmouseout":"strokeWhite(guiElements['handIcon']);hideDialog()",
+    onclick:'setMode(0)'
+  });
+
+  assignAttr(guiGrabText, { id:"guiGrabText",
+    x:469,
+    y:34,
+    height:28,
+    width:28,
+    'font-size':14
+  });
+
+  assignAttr(guiGrabTextProperties, { id:"guiGrabTextProperties",
+    'font-family':'sans-serif',
+    'font-weight':'bold',
+    'text-anchor':'end',
+    fill:GREY
+  });
+
+  assignAttr(guiIntersectBox, { id:"guiIntersectBox",
+    x:474,
+    y:43,
+    height:28,
+    width:28,
+    fill:LIGHTGREY,
+    "onmouseover":"fillBlack(guiElements['intersectIcon']);strokeBlack(guiElements['intersectIcon']);showDialog('Select bounds to find the intersection of the selected equations')",
+    "onmouseout":"fillWhite(guiElements['intersectIcon']);strokeWhite(guiElements['intersectIcon']);hideDialog()",
+    onclick:'setMode(1)'
+  });
+
+  assignAttr(guiIntersectText, { id:"guiIntersectText",
+    x:469,
+    y:62,
+    height:28,
+    width:28,
+    'font-size':14
+  });
+
+  assignAttr(guiIntersectTextProperties, { id:"guiIntersectTextProperties",
+    'font-family':'sans-serif',
+    'font-weight':'bold',
+    'text-anchor':'end',
+    fill:GREY
+  });
+
+  assignAttr(guiZeroBox, { id:"guiZeroBox",
+    x:474,
+    y:71,
+    height:28,
+    width:28,
+    fill:LIGHTGREY,
+    "onmouseover":"fillBlack(guiElements['zeroIcon']);strokeBlack(guiElements['zeroIcon']);showDialog('Select bounds to find the zero of the selected equation')",
+    "onmouseout":"fillWhite(guiElements['zeroIcon']);strokeWhite(guiElements['zeroIcon']);hideDialog()",
+    onclick:'setMode(2)'
+  });
+
+  assignAttr(guiZeroText, { id:"guiZeroText",
+    x:469,
+    y:90,
+    height:28,
+    width:28,
+    'font-size':14
+  });
+
+  assignAttr(guiZeroTextProperties, { id:"guiZeroTextProperties",
+    'font-family':'sans-serif',
+    'font-weight':'bold',
+    'text-anchor':'end',
+    fill:GREY
+  });
+
+  assignAttr(guiMaxBox, { id:"guiMaxBox",
+    x:474,
+    y:99,
+    height:28,
+    width:28,
+    fill:LIGHTGREY,
+    "onmouseover":
+    "fillBlack(guiElements['maxDot']);strokeBlack(guiElements['maxDot']);strokeBlack(guiElements['maxLine']);showDialog('Select bounds to find the max of the selected equation')",
+    "onmouseout":
+    "fillWhite(guiElements['maxDot']);strokeWhite(guiElements['maxDot']);strokeWhite(guiElements['maxLine']);hideDialog()",
+    onclick:'setMode(3)'
+  });
+
+  assignAttr(guiMaxText, { id:"guiMaxText",
+    x:469,
+    y:118,
+    height:28,
+    width:28,
+    'font-size':14
+  });
+
+  assignAttr(guiMaxTextProperties, { id:"guiMaxTextProperties",
+    'font-family':'sans-serif',
+    'font-weight':'bold',
+    'text-anchor':'end',
+    fill:GREY
+  });
+
+  assignAttr(guiMinBox, { id:"guiMinBox",
+    x:474,
+    y:127,
+    height:28,
+    width:28,
+    fill:LIGHTGREY,
+    "onmouseover":
+    "fillBlack(guiElements['minDot']);strokeBlack(guiElements['minDot']);strokeBlack(guiElements['minLine']);showDialog('Select bounds to find the min of the selected equation')",
+    "onmouseout":
+    "fillWhite(guiElements['minDot']);strokeWhite(guiElements['minDot']);strokeWhite(guiElements['minLine']);hideDialog()",
+    onclick:'setMode(4)'
+  });
+
+  assignAttr(guiMinText, { id:"guiMinText",
+    x:469,
+    y:146,
+    height:28,
+    width:28,
+    'font-size':14
+  });
+
+  assignAttr(guiMinTextProperties, { id:"guiMinTextProperties",
+    'font-family':'sans-serif',
+    'font-weight':'bold',
+    'text-anchor':'end',
+    fill:GREY
+  });
+
+  assignAttr(guiTraceBox, { id:"guiTraceBox",
+    x:474,
+    y:155,
+    height:28,
+    width:28,
+    fill:LIGHTGREY,
+    "onmouseover":
+    "fillBlack(guiElements['traceDot']);strokeBlack(guiElements['traceDot']);strokeBlack(guiElements['traceLine']);showDialog('Click to find the y value of the nearest plot')",
+    "onmouseout":
+    "fillWhite(guiElements['traceDot']);strokeWhite(guiElements['traceDot']);strokeWhite(guiElements['traceLine']);hideDialog()",
+    onclick:'setMode(5)'
+  });
+
+  assignAttr(guiTraceText, { id:"guiTraceText",
+    x:469,
+    y:174,
+    height:28,
+    width:28,
+    'font-size':14
+  });
+
+  assignAttr(guiTraceTextProperties, { id:"guiTraceTextProperties",
+    'font-family':'sans-serif',
+    'font-weight':'bold',
+    'text-anchor':'end',
+    fill:GREY
+  });
+
+  assignAttr(layers['navigationControls'], {
+    onmouseover:'navigationControlsMouseover()',
+    onmouseout:'navigationControlsMouseout()'
+  });
+
+  assignAttr(layers['modeControls'], {
+    onmouseover:'modeControlsMouseover()',
+    onmouseout:'modeControlsMouseout()'
+  });
+
+  assignAttr(layers['modeControlsText'], INVISIBLE);
+
+  var xText = document.createTextNode('x: 0');
+  xMouseValue.appendChild(xText);
+
+  var yText = document.createTextNode('y: 0');
+  yMouseValue.appendChild(yText);
+
+  var guiDialogTextNode = document.createTextNode('Dialog');
+  guiDialogTextProperties.appendChild(guiDialogTextNode);
+  guiDialogText.appendChild(guiDialogTextProperties);
+
+  var guiResetTextNode = document.createTextNode('Reset');
+  guiResetTextProperties.appendChild(guiResetTextNode);
+  guiResetText.appendChild(guiResetTextProperties);
+
+  var guiOriginTextNode = document.createTextNode('Origin');
+  guiOriginTextProperties.appendChild(guiOriginTextNode);
+  guiOriginText.appendChild(guiOriginTextProperties);
+
+  var guiGrabTextNode = document.createTextNode('Drag');
+  guiGrabTextProperties.appendChild(guiGrabTextNode);
+  guiGrabText.appendChild(guiGrabTextProperties);
+
+  var guiIntersectTextNode = document.createTextNode('Intersect');
+  guiIntersectTextProperties.appendChild(guiIntersectTextNode);
+  guiIntersectText.appendChild(guiIntersectTextProperties);
+
+  var guiZeroTextNode = document.createTextNode('Zero');
+  guiZeroTextProperties.appendChild(guiZeroTextNode);
+  guiZeroText.appendChild(guiZeroTextProperties);
+
+  var guiMaxTextNode = document.createTextNode('Max');
+  guiMaxTextProperties.appendChild(guiMaxTextNode);
+  guiMaxText.appendChild(guiMaxTextProperties);
+
+  var guiMinTextNode = document.createTextNode('Min');
+  guiMinTextProperties.appendChild(guiMinTextNode);
+  guiMinText.appendChild(guiMinTextProperties);
+
+  var guiTraceTextNode = document.createTextNode('Trace');
+  guiTraceTextProperties.appendChild(guiTraceTextNode);
+  guiTraceText.appendChild(guiTraceTextProperties);
+
+  // Add them to out guiElements associative array
+  guiElements['background'] = drawBackground();
+  guiElements['grids'] = drawGrid();
+
+  guiElements['xAxis'] = xAxis;
+  guiElements['yAxis'] = yAxis;
+
+  guiElements['xMouseValue'] = xMouseValue;
+  guiElements['yMouseValue'] = yMouseValue;
+
+  guiElements['guiDialogText'] = guiDialogText;
+  guiElements['guiDialogBox'] = guiDialogBox;
+  guiElements['guiDialogTextNode'] = guiDialogTextNode;
+  guiElements['guiOriginTextProperties'] = guiOriginTextProperties;
+  guiElements['guiResetTextProperties'] = guiResetTextProperties;
+  guiElements['guiZoomInPlusHoriz'] = guiZoomInPlusHoriz;
+  guiElements['guiZoomInPlusVert'] = guiZoomInPlusVert;
+  guiElements['guiZoomOutMinus'] = guiZoomOutMinus;
+
+  guiElements['guiGrabBox'] = guiGrabBox;
+  guiElements['guiIntersectBox'] = guiIntersectBox;
+  guiElements['guiZeroBox'] = guiZeroBox;
+  guiElements['guiMaxBox'] = guiMaxBox;
+  guiElements['guiMinBox'] = guiMinBox;
+  guiElements['guiTraceBox'] = guiTraceBox;
+
+  // Append them to the root
+  layers['backgroundLayer'].appendChild(guiElements['background']);
+  layers['backgroundLayer'].appendChild(guiElements['grids']);
+  layers['axisLayer'].appendChild(xAxis);
+  layers['axisLayer'].appendChild(yAxis);
+  layers['guiElementsLayer'].appendChild(xMouseValue);
+  layers['guiElementsLayer'].appendChild(yMouseValue);
+
+  layers['navigationControls'].appendChild(guiOriginBox);
+  layers['navigationControls'].appendChild(guiOriginText);
+  layers['navigationControls'].appendChild(guiResetBox);
+  layers['navigationControls'].appendChild(guiResetText);
+  layers['navigationControls'].appendChild(guiZoomInBox);
+  layers['navigationControls'].appendChild(guiZoomInPlusHoriz);
+  layers['navigationControls'].appendChild(guiZoomInPlusVert);
+  layers['navigationControls'].appendChild(guiZoomOutBox);
+  layers['navigationControls'].appendChild(guiZoomOutMinus);
+
+  layers['modeControls'].appendChild(guiDialogBox);
+  layers['modeControls'].appendChild(guiDialogText);
+  layers['modeControls'].appendChild(guiNavigationTray);
+  layers['modeControls'].appendChild(guiGrabBox);
+  layers['modeControlsText'].appendChild(guiGrabText);
+  layers['modeControls'].appendChild(guiIntersectBox);
+  layers['modeControlsText'].appendChild(guiIntersectText);
+  layers['modeControls'].appendChild(guiZeroBox);
+  layers['modeControlsText'].appendChild(guiZeroText);
+  layers['modeControls'].appendChild(guiMaxBox);
+  layers['modeControlsText'].appendChild(guiMaxText);
+  layers['modeControls'].appendChild(guiMinBox);
+  layers['modeControlsText'].appendChild(guiMinText);
+  layers['modeControls'].appendChild(guiTraceBox);
+  layers['modeControlsText'].appendChild(guiTraceText);
+
+  drawNumbers();
+
+  drawHandIcon();
+  drawIntersectIcon();
+  drawZeroIcon();
+  drawMaxIcon();
+  drawMinIcon();
+  drawTraceIcon();
+  updateGrid(); //update the gridlines underneath
+  updateNumbers();
+}
+
+function drawBackground() {
+  var gridStartX = -(WINDOW_WIDTH + WINDOW_WIDTH/2);
+  var gridStartY = -(WINDOW_HEIGHT + WINDOW_HEIGHT/2);
+  var background = document.createElementNS(XMLNS,"rect");
+  assignAttr(background, {
+    x:gridStartX,
+    y:gridStartY,
+    fill:GREY_BACK,
+    width:WINDOW_WIDTH*3,
+    height:WINDOW_HEIGHT*3
+  });
+  return background;
+}
+
+function drawGrid() {
+
+  var gridStartX = -(WINDOW_WIDTH + WINDOW_WIDTH/2);
+  var gridEndX = WINDOW_WIDTH + WINDOW_WIDTH/2;
+  var gridStartY = -(WINDOW_HEIGHT + WINDOW_HEIGHT/2);
+  var gridEndY = WINDOW_HEIGHT + WINDOW_HEIGHT/2;
+  var gridXIncrement = WINDOW_WIDTH/TICKS_COUNT;
+  var gridYIncrement = WINDOW_HEIGHT/TICKS_COUNT;
+
+  var grid = document.createElementNS(XMLNS,"g");
+
+  for (var i = gridStartX; i &lt; gridEndX; i += gridXIncrement) {
+    var currentLine = document.createElementNS(XMLNS,"line");
+    assignAttr(currentLine, { id:i,
+      x1:i,
+      y1:gridStartY,
+      x2:i,
+      y2:gridEndY,
+      stroke:GREY,
+      "stroke-width":.5});
+    grid.appendChild(currentLine);
+  }
+  for (var i = gridStartY; i &lt; gridEndY; i += gridYIncrement) {
+    var currentLine = document.createElementNS(XMLNS,"line");
+    assignAttr(currentLine, { id:i,
+      x1:gridStartX,
+      y1:i,
+      x2:gridEndX,
+      y2:i,
+      stroke:GREY,
+      "stroke-width":.5});
+    grid.appendChild(currentLine);
+  }
+  return grid;
+}
+
+function drawNumbers() {
+  var xIncrement = WINDOW_WIDTH/TICKS_COUNT;
+  var yIncrement = WINDOW_HEIGHT/TICKS_COUNT;
+  var xNumStart = -WINDOW_WIDTH/2-xIncrement;
+  var yNumStart = -WINDOW_HEIGHT/2-yIncrement;
+
+  for (var i = 0; i &lt; TICKS_COUNT+3; i++) {
+    var currentText = document.createElementNS(XMLNS, "text");
+    var currentTextNode = document.createTextNode(i);
+    assignAttr(currentText, {
+      x:xNumStart + parseFloat(i * xIncrement),
+      y:0,
+      'font-size':13,
+      fill:GREY
+    });
+    currentText.appendChild(currentTextNode);
+    layers['xNumbers'].appendChild(currentText);
+    xNumList[i] = currentText;
+
+    currentText = document.createElementNS(XMLNS, "text");
+    currentTextNode = document.createTextNode(i);
+    assignAttr(currentText, {
+      x:0,
+      y:yNumStart + parseFloat(i * yIncrement),
+      'font-size':13,
+      fill:GREY
+    });
+    currentText.appendChild(currentTextNode);
+    layers['yNumbers'].appendChild(currentText);
+    yNumList[i] = currentText;
+  }
+}
+
+function drawHandIcon() {
+  var hand = document.createElementNS(XMLNS,"g");
+  var linePointArray = [
+    [5, 5, 15, 14],[5, 2, 14, 11],[2, 3, 11, 10],[2, 0, 10, 8],
+    [0, 0, 8, 7],[0, 1, 7, 6],[1, 2, 6, 6],[2, 4, 6, 8],
+    [4, 4, 8, 6],[4, 3, 6, 5],[3, 3, 5, 4],[3, 2, 4, 3],
+    [2, 2, 3, 2],[2, 3, 2, 1],[3, 4, 1, 1],[4, 5, 1, 2],
+    [5, 5, 2, 3],[5, 6, 3, 4],[6, 6, 5, 1],[6, 7, 2, 0],
+    [7, 8, 0, 0],[8, 9, 0, 1],[9, 9, 1, 5],[9, 11, 1, 1],
+    [11, 12, 1, 2],[12, 12, 2, 6],[12, 14, 5, 3],[14, 15, 3, 4],
+    [15, 15, 4, 7],[15, 14, 7, 8],[14, 14, 8, 10],[14, 13, 10, 11],
+    [13, 13, 11, 12],[13, 12, 12, 13],[12, 12, 13, 15]
+  ];
+  for (var i = 0; i &lt; linePointArray.length; i++) {
+    var currentLine = document.createElementNS(XMLNS,"line");
+      assignAttr(currentLine, {
+        x1:linePointArray[i][0],
+        y1:linePointArray[i][2],
+        x2:linePointArray[i][1],
+        y2:linePointArray[i][3]
+      });
+    hand.appendChild(currentLine);
+  }
+  guiElements['handIcon'] = hand;
+  assignAttr(hand, {
+    stroke:"white",
+    "stroke-width":1,
+    "onmouseover":"strokeBlack(guiElements['handIcon']);showDialog('Drag the graph to change the current view')",
+    "onmouseout":"strokeWhite(guiElements['handIcon']);hideDialog()",
+    onclick:'setMode(0)'
+  });
+  translate(hand, 480, 22);
+  layers['modeControls'].appendChild(hand);
+}
+
+function drawIntersectIcon() {
+  var intersectIcon = document.createElementNS(XMLNS,"g");
+  var firstLine = document.createElementNS(XMLNS,"line");
+  assignAttr(firstLine, {
+    x1:0,
+    y1:0,
+    x2:14,
+    y2:14
+  });
+  var secondLine = document.createElementNS(XMLNS,"line");
+  assignAttr(secondLine, {
+    x1:14,
+    y1:0,
+    x2:0,
+    y2:14
+  });
+  var dot = document.createElementNS(XMLNS,"circle");
+  assignAttr(dot, {
+    cx:7,
+    cy:7,
+    r:2
+  });
+  intersectIcon.appendChild(firstLine);
+  intersectIcon.appendChild(secondLine);
+  intersectIcon.appendChild(dot);
+  guiElements['intersectIcon'] = intersectIcon;
+  assignAttr(intersectIcon, {
+    fill:"white",
+    stroke:"white",
+    "stroke-width":1,
+    "onmouseover":"fillBlack(guiElements['intersectIcon']);strokeBlack(guiElements['intersectIcon']);showDialog('Select bounds to find the intersection of the selected equations')",
+    "onmouseout":"fillWhite(guiElements['intersectIcon']);strokeWhite(guiElements['intersectIcon']);hideDialog()",
+    onclick:'setMode(1)'
+  });
+  translate(intersectIcon, 481, 50);
+  layers['modeControls'].appendChild(intersectIcon);
+}
+
+function drawZeroIcon() {
+  var zeroIcon = document.createElementNS(XMLNS,"g");
+  var firstLine = document.createElementNS(XMLNS,"line");
+  assignAttr(firstLine, {
+    x1:-4,
+    y1:7,
+    x2:18,
+    y2:7
+  });
+  var secondLine = document.createElementNS(XMLNS,"line");
+  assignAttr(secondLine, {
+    x1:0,
+    y1:0,
+    x2:14,
+    y2:14
+  });
+  var dot = document.createElementNS(XMLNS,"circle");
+  assignAttr(dot, {
+    cx:7,
+    cy:7,
+    r:2
+  });
+  zeroIcon.appendChild(firstLine);
+  zeroIcon.appendChild(secondLine);
+  zeroIcon.appendChild(dot);
+  guiElements['zeroIcon'] = zeroIcon;
+  assignAttr(zeroIcon, {
+    fill:"white",
+    stroke:"white",
+    "stroke-width":1,
+    "onmouseover":"fillBlack(guiElements['zeroIcon']);strokeBlack(guiElements['zeroIcon']);showDialog('Select bounds to find the zero of the selected equation')",
+    "onmouseout":"fillWhite(guiElements['zeroIcon']);strokeWhite(guiElements['zeroIcon']);hideDialog()",
+    onclick:'setMode(2)'
+  });
+  translate(zeroIcon, 481, 78);
+  layers['modeControls'].appendChild(zeroIcon);
+}
+
+function drawMaxIcon() {
+  var maxIcon = document.createElementNS(XMLNS,"g");
+  var firstLine = document.createElementNS(XMLNS,"path");
+  assignAttr(firstLine, {
+    d:"M0,18 C0,0 18,0 18,18"
+  });
+  var dot = document.createElementNS(XMLNS,"circle");
+  assignAttr(dot, {
+    cx:9,
+    cy:5,
+    r:2,
+    fill:"white"
+  });
+  maxIcon.appendChild(firstLine);
+  maxIcon.appendChild(dot);
+  guiElements['maxDot'] = dot;
+  guiElements['maxLine'] = firstLine;
+  assignAttr(maxIcon, {
+    fill:"none",
+    stroke:"white",
+    "stroke-width":1,
+    "onmouseover":
+    "fillBlack(guiElements['maxDot']);strokeBlack(guiElements['maxDot']);strokeBlack(guiElements['maxLine']);showDialog('Select bounds to find the max of the selected equation')",
+    "onmouseout":
+    "fillWhite(guiElements['maxDot']);strokeWhite(guiElements['maxDot']);strokeWhite(guiElements['maxLine']);hideDialog()",
+    onclick:'setMode(3)'
+  });
+  translate(maxIcon, 479, 102);
+  layers['modeControls'].appendChild(maxIcon);
+}
+
+function drawMinIcon() {
+  var minIcon = document.createElementNS(XMLNS,"g");
+  var firstLine = document.createElementNS(XMLNS,"path");
+  assignAttr(firstLine, {
+    d:"M0,0 C0,18 18,18 18,0"
+  });
+  var dot = document.createElementNS(XMLNS,"circle");
+  assignAttr(dot, {
+    cx:9,
+    cy:13,
+    r:2,
+    fill:"white"
+  });
+  minIcon.appendChild(firstLine);
+  minIcon.appendChild(dot);
+  guiElements['minDot'] = dot;
+  guiElements['minLine'] = firstLine;
+  assignAttr(minIcon, {
+    fill:"none",
+    stroke:"white",
+    "stroke-width":1,
+    "onmouseover":
+    "fillBlack(guiElements['minDot']);strokeBlack(guiElements['minDot']);strokeBlack(guiElements['minLine']);showDialog('Select bounds to find the min of the selected equation')",
+    "onmouseout":
+    "fillWhite(guiElements['minDot']);strokeWhite(guiElements['minDot']);strokeWhite(guiElements['minLine']);hideDialog()",
+    onclick:'setMode(4)'
+  });
+  translate(minIcon, 479, 134);
+  layers['modeControls'].appendChild(minIcon);
+}
+
+function drawTraceIcon() {
+  var traceIcon = document.createElementNS(XMLNS,"g");
+  var firstLine = document.createElementNS(XMLNS,"path");
+  assignAttr(firstLine, {
+    d:"M0,7 C0,0 18,18 18,7"
+  });
+  var dot = document.createElementNS(XMLNS,"circle");
+  assignAttr(dot, {
+    cx:7,
+    cy:7,
+    r:2,
+    fill:"white"
+  });
+  traceIcon.appendChild(firstLine);
+  traceIcon.appendChild(dot);
+  guiElements['traceDot'] = dot;
+  guiElements['traceLine'] = firstLine;
+  assignAttr(traceIcon, {
+    fill:"none",
+    stroke:"white",
+    "stroke-width":1,
+    "onmouseover":
+    "fillBlack(guiElements['traceDot']);strokeBlack(guiElements['traceDot']);strokeBlack(guiElements['traceLine']);showDialog('Click to find the y value of the nearest plot')",
+    "onmouseout":
+    "fillWhite(guiElements['traceDot']);strokeWhite(guiElements['traceDot']);strokeWhite(guiElements['traceLine']);hideDialog()",
+    onclick:'setMode(5)'
+  });
+  translate(traceIcon, 479, 162);
+  layers['modeControls'].appendChild(traceIcon);
+}
+
+function fillBlack(elm) {
+  assignAttr(elm, {fill: "black"});
+}
+
+function fillWhite(elm) {
+  assignAttr(elm, {fill: "white"});
+}
+
+function strokeBlack(elm) {
+  assignAttr(elm, {stroke: "black"});
+}
+
+function strokeWhite(elm) {
+  assignAttr(elm, {stroke: "white"});
+}
+
+function modeControlsMouseover() {
+  assignAttr(layers['modeControlsText'], VISIBLE);
+  assignAttr(ROOT, {
+    "onmousedown":null,
+    "onmousemove":null,
+    "onmouseup":null,
+    cursor:"pointer"});
+  addonRemove();
+  clearDrawBox();
+}
+
+function modeControlsMouseout() {
+  if (!isZooming) {
+    assignAttr(layers['modeControlsText'], INVISIBLE);
+    if (currentMode == 0) {
+      assignAttr(ROOT, {
+        "onmousedown":"grab(evt)",
+        "onmousemove":"slide(evt)",
+        "onmouseup":"release(evt)",
+        cursor:"move"});
+    }
+    else if (currentMode == 5) {
+      assignAttr(ROOT, {
+        "onmousedown":"traceClick(evt)",
+        "onmousemove":"traceSlide(evt)",
+        cursor:"default"});
+    }
+    else {
+      assignAttr(ROOT, {
+        "onmousedown":"drawBoxGrab(evt)",
+        "onmousemove":"drawBoxSlide(evt)",
+        "onmouseup":"drawBoxRelease(evt)",
+        cursor:"crosshair"});
+    }
+  }
+}
+
+function navigationControlsMouseover() {
+  assignAttr(ROOT, {
+    "onmousedown":null,
+    "onmousemove":null,
+    "onmouseup":null,
+    cursor:"pointer"});
+  addonRemove();
+  clearDrawBox();
+}
+
+function navigationControlsMouseout() {
+  if (!isZooming) {
+    if (currentMode == 0) {
+      assignAttr(ROOT, {
+        "onmousedown":"grab(evt)",
+        "onmousemove":"slide(evt)",
+        "onmouseup":"release(evt)",
+        cursor:"move"});
+    }
+    else if (currentMode == 5) {
+      assignAttr(ROOT, {
+        "onmousedown":"traceClick(evt)",
+        "onmousemove":"traceSlide(evt)",
+        cursor:"default"});
+    }
+    else {
+      assignAttr(ROOT, {
+        "onmousedown":"drawBoxGrab(evt)",
+        "onmousemove":"drawBoxSlide(evt)",
+        "onmouseup":"drawBoxRelease(evt)",
+        cursor:"crosshair"});
+    }
+  }
+}
+
+function setMode(num) {
+
+  resetAllColors();
+
+  // Power of switch statement :O
+  switch (num) {
+
+    case DRAG_MODE:
+      currentMode = DRAG_MODE;
+      top.fnSelectToggle(false, false);
+      assignAttr(guiElements['guiGrabBox'], SET_MODE_SELECTED);
+      break;
+
+    case INTERSECT_MODE:
+      currentMode = INTERSECT_MODE;
+      top.fnSelectToggle(true, true);
+      assignAttr(guiElements['guiIntersectBox'], SET_MODE_SELECTED);
+      break;
+
+    case ZERO_MODE:
+      currentMode = ZERO_MODE;
+      top.fnSelectToggle(true, false);
+      assignAttr(guiElements['guiZeroBox'], SET_MODE_SELECTED);
+      break;
+
+    case MAX_MODE:
+      currentMode = MAX_MODE;
+      top.fnSelectToggle(true, false);
+      assignAttr(guiElements['guiMaxBox'], SET_MODE_SELECTED);
+      break;
+
+    case MIN_MODE:
+      currentMode = MIN_MODE;
+      top.fnSelectToggle(true, false);
+      assignAttr(guiElements['guiMinBox'], SET_MODE_SELECTED);
+      break;
+
+    default:
+      currentMode = TRACE_MODE;
+      top.fnSelectToggle(false, false);
+      assignAttr(guiElements['guiTraceBox'], SET_MODE_SELECTED);
+      break;
+  }
+
+  if (num == DRAG_MODE) {
+    assignAttr(ROOT, {
+      "onmousedown":"grab(evt)",
+      "onmousemove":"slide(evt)",
+      "onmouseup":"release(evt)",
+      cursor:"move"});
+  }
+  else if (num == TRACE_MODE) {
+    assignAttr(ROOT, {
+      "onmousedown":"traceClick(evt)",
+      "onmousemove":"traceSlide(evt)",
+      cursor:"default"});
+  }
+  else {
+    assignAttr(ROOT, {
+      "onmousedown":"drawBoxGrab(evt)",
+      "onmousemove":"drawBoxSlide(evt)",
+      "onmouseup":"drawBoxRelease(evt)",
+      cursor:"crosshair"});
+  }
+
+}
+
+function resetAllColors() {
+  assignAttr(guiElements['guiGrabBox'], GUI_RESET);
+  assignAttr(guiElements['guiIntersectBox'], GUI_RESET);
+  assignAttr(guiElements['guiZeroBox'], GUI_RESET);
+  assignAttr(guiElements['guiMaxBox'], GUI_RESET);
+  assignAttr(guiElements['guiMinBox'], GUI_RESET);
+  assignAttr(guiElements['guiTraceBox'], GUI_RESET);
+}
+
+/********************************************************************
+  Event Handling
+  TODO: additional comments on slide()
+  TODO: handleClick()
+********************************************************************/
+
+function reset() {
+  curXMin = -8;
+  curXMax = 8;
+
+  curYMin = -8;
+  curYMax = 8;
+
+  valueToPixelScale = 32;
+  pixelToValueScale = 1 / valueToPixelScale;
+
+  moveBox(0, 0);
+}
+
+function moveToOrigin() {
+  curXMin = pixelToValue(-WINDOW_WIDTH/2);
+  curXMax = pixelToValue(WINDOW_WIDTH/2);
+
+  curYMin = pixelToValue(-WINDOW_HEIGHT/2);
+  curYMax = pixelToValue(WINDOW_HEIGHT/2);
+
+  moveBox(0, 0);
+}
+
+// Handles the grab event
+function grab(evt) {
+  dragging = true;
+  newGrab = true;
+  lastX = evt.clientX;
+  lastY = evt.clientY;
+}
+
+// Handles the release event
+function release(evt) {
+  dragging = false;
+}
+
+// Handles mouse movement
+function slide(evt) {
+  //If there is dragging
+  var xValue;
+  var yValue;
+  if (dragging) {
+
+    //Transform the current pixels to workable point units
+    var clientXPoint = evt.clientX;
+    var clientYPoint = evt.clientY;
+
+    //Calculate the total movement generated from either plot
+    var xMovement = clientXPoint - lastX;
+    var yMovement = clientYPoint - lastY;
+
+    //Get the current attributes of the viewbox
+    var viewBox = ROOT.getAttribute('viewBox');
+    var viewBoxArray = viewBox.split(' ');
+
+    //Calculate the new viewbox positions, which are simply adjusted by the total movement done
+
+    var newCornerX = parseInt(viewBoxArray[0]) - xMovement;
+    var newCornerY = parseInt(viewBoxArray[1]) - yMovement;
+
+    //Set the attribute
+    ROOT.setAttribute('viewBox', newCornerX + ' ' + newCornerY + ' ' + viewBoxArray[2] + ' ' + viewBoxArray[3]);
+
+    translate(layers['guiElementsLayer'],newCornerX, newCornerY);
+
+    // yMovement = Positive = Drag down
+    if (yMovement != 0) {
+      if (yMovement &gt; 0) {
+        for (var i = 0; i &lt; yMovement; i += 1) {
+          curYMin = curYMin + pixelToValueScale;
+          curYMax = curYMax + pixelToValueScale;
+
+          if (curYMax &gt; absYMax) {
+            absYMax = curYMax;
+          }
+        }
+      }
+      else {  // yMovement less than 0, drag up
+        for (var i = 0; i &gt; yMovement; i -= 1) {
+          curYMin = curYMin - pixelToValueScale;
+          curYMax = curYMax - pixelToValueScale;
+
+          if (curYMin &lt; absYMin) {
+            absYMin = curYMin;
+          }
+        }
+      }
+    }
+
+
+    //Generates points as you explore new areas
+    //If there is progression of the screen to a direction
+    if (xMovement != 0) {
+      //Moving to the right, showing more left
+      if (xMovement &gt; 0) {
+        //For every new unit moved
+        for (var i = 0; i &lt; xMovement; i+=1) {
+          //Set the current values to be the values post movement of one unit
+          curXMin = curXMin - pixelToValueScale;
+          curXMax = curXMax - pixelToValueScale;
+
+          //If the movement causes the currentwindow to be less than the lowest min we've ever seen
+          if (curXMin &lt; absXMin) {
+            //For all the plots, graph with the new edge case
+            //Set the absolute min to this newly explored area
+
+            for (var j in curFuncObjs) {
+              if (curFuncObjs[j].fn.length != 0) {
+                if (curFuncObjs[j].visibility == true) {
+                  if (curFuncObjs[j].type == "fx") {
+                    var x = curXMin;
+                    var y = curFuncObjs[j].func(x);
+                    var x2 = x + pixelToValueScale;
+                    var y2 = curFuncObjs[j].func(x2);
+                    plotLine(x, y, x2, y2, j, plots[j]);
+                  }
+                }
+              }
+            }
+            absXMin = curXMin;
+          }
+        }
+      }
+      //Otherwise, handle rightward progression
+      else {
+        for (var i = 0; i &gt; xMovement; i-=1) {
+          curXMin = curXMin + pixelToValueScale;
+          curXMax = curXMax + pixelToValueScale;
+          if (curXMax &gt; absXMax) {
+            for (var j in curFuncObjs) {
+              if (curFuncObjs[j].fn.length != 0) {
+                if (curFuncObjs[j].visibility == true) {
+                  if (curFuncObjs[j].type == "fx") {
+                    var x = curXMax;
+                    var y = curFuncObjs[j].func(x);
+                    var x2 = x + pixelToValueScale;
+                    var y2 = curFuncObjs[j].func(x2);
+
+                    plotLine(x, y, x2, y2, j, plots[j]);
+                  }
+                }
+              }
+            }
+            absXMax = curXMax;
+          }
+        }
+      }
+    }
+
+    updateAxis(); //update x and y axis
+    updateGrid(); //update the gridlines underneath
+    updateNumbers();
+    //Set the current position to the last seen position
+    lastX = clientXPoint;
+    lastY = clientYPoint;
+
+  }
+  else {
+
+    var xValue = getMouseXValue(evt);
+    var yValue = getMouseYValue(evt);
+
+    updateXYLabel(xValue, yValue);
+
+  }
+}
+
+function drawBoxGrab(evt) {
+  clearDrawBox();
+
+  dragging = true;
+  lastX = evt.clientX;
+  lastY = evt.clientY;
+  dragStartX = getMouseXValue(evt);
+  dragStartY = getMouseYValue(evt);
+
+  var dragBox = document.createElementNS(XMLNS,"g");
+  var vertAnchor = document.createElementNS(XMLNS,"line");
+  var vertChange = document.createElementNS(XMLNS,"line");
+
+  assignAttr(dragBox, DRAG_BOX_STYLE);
+
+  assignAttr(vertAnchor, {id:"vertAnchor",
+    x1:lastX,
+    y1:0,
+    x2:lastX,
+    y2:WINDOW_HEIGHT});
+
+  assignAttr(vertChange, {id:"vertChange",
+    x1:lastX,
+    y1:0,
+    x2:lastX,
+    y2:WINDOW_HEIGHT});
+    
+  guiElements['dragBox'] = dragBox;
+  guiElements['vertAnchor'] = vertAnchor;
+  guiElements['vertChange'] = vertChange;
+  dragBox.appendChild(vertAnchor);
+  dragBox.appendChild(vertChange);
+  layers['drawBoxLayer'].appendChild(dragBox);
+}
+
+function drawBoxSlide(evt) {
+  if (dragging) {
+    var vertAnchor = guiElements['vertAnchor'];
+    assignAttr(guiElements['vertAnchor'], {
+      x2:lastX});
+
+    assignAttr(guiElements['vertChange'], {
+      x1:evt.clientX,
+      x2:evt.clientX});
+  }
+  var xValue = getMouseXValue(evt);
+  var yValue = getMouseYValue(evt);
+  updateXYLabel(xValue, yValue);
+}
+
+function clearDrawBox() {
+  var dragBox = guiElements['dragBox'];
+  if (dragBox != null) {
+    layers['drawBoxLayer'].removeChild(guiElements['dragBox']);
+    delete guiElements['dragBox'];
+    delete guiElements['vertAnchor'];
+    delete guiElements['vertChange'];
+  }
+}
+
+function drawBoxRelease(evt) {
+  dragging = false;
+  addonRemoveAll();
+  var lowX = Math.min(getMouseXValue(evt), dragStartX);
+  var upX = Math.max(getMouseXValue(evt), dragStartX);
+  var lowY = Math.min(getMouseYValue(evt), dragStartY);
+  var upY = Math.max(getMouseYValue(evt), dragStartY);
+  var key1 = top.fnSelected1;
+  var key2 = top.fnSelected2;
+
+  if (key1) {
+    if (valueToPixel(upX) - valueToPixel(lowX) &gt; 2) {
+      switch (currentMode) {
+        case INTERSECT_MODE:
+          if (key1 == key2) {
+            top.con.write('msg',"Error: Need at least two plots to peform action", RED);
+            clearDrawBox();
+          } else {
+            intersection(key1, key2, lowX, upX, lowY, upY);
+          }
+          break;
+        case ZERO_MODE:
+          zero(key1, lowX, upX, lowY, upY);
+          break;
+        case MAX_MODE:
+          maximum(key1, lowX, upX, lowY, upY);
+          break;
+        case MIN_MODE:
+          minimum(key1, lowX, upX, lowY, upY);
+          break;
+      }
+    //console.log("lowX=" + lowX + ", upX=" + upX + ", lowY="+ lowY + ", upY="+ upY);
+    //console.log("offsetX="+offsetX+" offsetY="+offsetY);
+    delete result;
+    }
+  } else {
+    top.con.write('msg',"Error: No existing plots", RED);
+    clearDrawBox();
+  }
+
+}
+
+function updateXYLabel(xValue, yValue) {
+  // Update the X Value
+  guiElements['xMouseValue'].firstChild.nodeValue = "x: " + limitNumberText(xValue,10,10);
+
+  // Update the Y value
+  guiElements['yMouseValue'].firstChild.nodeValue = "y: " + limitNumberText(yValue,10,10);
+}
+
+//x and y are coordinates, key is the plot interacting with
+function addonPointText(x, y, key, text) {
+  addonPoint(x, y, key, true);
+  addonText(x, y, key, text, true);
+}
+
+function addonPoint(x, y, key, keep) {
+  var newCircle = document.createElementNS(XMLNS, 'circle');
+  assignAttr(newCircle, {
+    cx:valueToPixel(x)-offsetX,
+    cy:-valueToPixel(y)-offsetY,
+    fill:curFuncObjs[key].color,
+    r:4});
+  layers['addons'].appendChild(newCircle);
+  if(keep &amp;&amp; lastPoint)
+    addonLast[key] = newCircle;
+  else
+    traceArray[key] = newCircle;
+  return newCircle;
+}
+
+//x and y are coordinates, key is the plot interacting with, text is content
+function addonText(x, y, key, text, keep) {
+  var traceText = document.createElementNS(XMLNS, 'text');
+  var traceTextNode = document.createTextNode(text);
+  assignAttr(traceText,{
+    x:valueToPixel(x)-offsetX+10,
+    y:-valueToPixel(y)-offsetY+15,
+    'font-family':'sans-serif',
+    fill:curFuncObjs[key].color});
+  traceText.appendChild(traceTextNode);
+  layers['addons'].appendChild(traceText);
+  if(keep &amp;&amp; lastPoint) {
+    addonLast['traceText'] = traceText;
+    addonLast['traceTextNode'] = traceTextNode;
+  } else {
+    traceArray['traceText'] = traceText;
+    traceArray['traceTextNode'] = traceTextNode;
+  }
+  return traceText;
+}
+
+//removes all addons
+function addonRemoveAll() {
+  addonRemove();
+  if(addonLast['traceTextNode']) {
+    delete addonLast['traceTextNode'];
+    for(var i in addonLast) {
+      layers['addons'].removeChild(addonLast[i]);
+      delete addonLast[i];
+    }
+  }
+}
+
+function addonRemove() {
+  if(traceArray['traceTextNode']) {
+    delete traceArray['traceTextNode'];
+    for(var i in traceArray) {
+      layers['addons'].removeChild(traceArray[i]);
+      delete traceArray[i];
+    }
+  }
+}
+
+function traceGetClosest(xValue, yValue) {
+  var smallestDistance = null;
+  var bestY = [null, null];
+  for(var i in curFuncObjs) {
+    if(curFuncObjs[i].type == 'fx' &amp;&amp; curFuncObjs[i].visibility) {
+      var curY = curFuncObjs[i].func(xValue);
+      if(!bestY[0] || isNaN(bestY[1])) {
+        smallestDistance = Math.abs(yValue-curY);
+        bestY = [i, curY];
+      }else{
+        if(smallestDistance &gt; Math.abs(yValue - curY)) {
+          smallestDistance = Math.abs(yValue-curY);
+          bestY = [i, curY];
+        }
+      }
+    }
+  }
+  return bestY;
+}
+
+function traceClick(evt) {
+  var xValue = getMouseXValue(evt);
+  var yValue = getMouseYValue(evt);
+  var closest = traceGetClosest(xValue, yValue);
+  var closestKey = closest[0];
+  var closestY = closest[1];
+  if(closestKey &amp;&amp; !isNaN(closestY)) {
+    addonRemoveAll();
+    addonPointText(xValue, closestY, closestKey, xValue+', '+closestY);
+    top.con.write('in', 'fx = '+curFuncObjs[closestKey].originalFn, BLACK);
+    top.con.write('out','('+xValue+','+closestY+')',curFuncObjs[closestKey].color);
+  }
+}
+
+function traceSlide(evt) {
+  var xValue = getMouseXValue(evt);
+  var yValue = getMouseYValue(evt);
+
+  //delete old values
+  addonRemove();
+
+  var closest = traceGetClosest(xValue, yValue);
+  var closestKey = closest[0];
+  var closestY = closest[1];
+  if(traceMultiple) {
+    for(var i in curFuncObjs) {
+      if(curFuncObjs[i].type == 'fx' &amp;&amp; curFuncObjs[i].visibility) {
+        var yVar = curFuncObjs[i].func(xValue);
+        if(yVar) {
+          var newCircle = addonPoint(xValue, yVar, i, false);
+          if(i == closestKey) {
+            addonText(xValue, yVar, i, xValue+','+yVar, false);
+          }
+          else
+            assignAttr(newCircle, {r:2});
+        }
+      }
+    }
+  } else {
+    addonPoint(xValue, closestY, closestKey, false);
+		addonText(xValue, closestY, closestKey, xValue + ',' + closestY, false);
+  }
+  updateXYLabel(xValue, yValue);
+}
+
+/********************************************************************
+  Pixel To/From Unit Conversion
+********************************************************************/
+
+// Translates pixel based on client.X into correctly scaled units
+function pixelToValue(xPixel) {
+  return xPixel * pixelToValueScale;
+}
+
+// Translates value based on client.X into correctly scaled pixels
+function valueToPixel(xPoint) {
+  return xPoint * valueToPixelScale;
+}
+
+/********************************************************************
+  Attribute Manipulation
+********************************************************************/
+
+// Appends attributes instead of setting it
+function appendAttr(obj, attr) {
+  if (obj == null)
+    return;
+
+  var tmp = null;
+  for (i in attr) {
+    tmp = obj.getAttributeNS(null, i);
+    if (tmp == null)
+      tmp = "";
+    obj.setAttributeNS(null, i, tmp + attr[i]);
+  }
+}
+
+// TODO OPTIMIZE
+// Assigns attributes to an object
+function assignAttr(obj, attr) {
+  if (obj == null) {
+    errorCounter++;
+    return;
+  }
+
+  for (i in attr) obj.setAttributeNS(null, i, attr[i]);
+  //for (i in attr) obj.setAttribute(i, attr[i]);
+  // Both seems to work
+}
+
+function createLine() {
+  var line = document.createElementNS(XMLNS, "line");
+
+  assignAttr(line, PLOT_LINE_STYLE);
+
+  return line;
+}
+
+function plotLine(x, y, x2, y2, index, layerObj) {
+  if (layerObj == null) {
+    errorCounter++;
+    return false;
+  }
+
+  // Take in the zooming factor
+  x = valueToPixel(x);
+  y = valueToPixel(y);
+  x2 = valueToPixel(x2);
+  y2 = valueToPixel(y2);
+
+  //offset it by a certain value to avoid svg canvas limitation
+  var center = getCenter();
+  var xPlot = parseFloat(x) - offsetX;
+  var x2Plot = parseFloat(x2) - offsetX;
+  var yPlot = parseFloat(-y) - offsetY;
+  var y2Plot = parseFloat(-y2) - offsetY;
+
+  if (yPlot &lt; -SVG_Canvas_Limit) {
+    yPlot = -SVG_Canvas_Limit;
+  }
+  if (yPlot &gt; SVG_Canvas_Limit) {
+    yPlot = SVG_Canvas_Limit;
+  }
+  if (y2Plot &lt; -SVG_Canvas_Limit) {
+    y2Plot = -SVG_Canvas_Limit;
+  }
+  if (y2Plot &gt; SVG_Canvas_Limit) {
+    y2Plot = SVG_Canvas_Limit;
+  }
+
+  if (!isNaN(xPlot) &amp;&amp; !isNaN(yPlot) &amp;&amp; !isNaN(x2Plot) &amp;&amp; !isNaN(y2Plot)) {
+    if (isFinite(xPlot) &amp;&amp; isFinite(yPlot) &amp;&amp; isFinite(x2Plot) &amp;&amp; isFinite(y2Plot)) {
+      var line = createLine();
+
+      // Assign some attributes and event handling
+      assignAttr(line, {
+        "x1": xPlot,
+        "y1": yPlot,
+        "x2": x2Plot,
+        "y2": y2Plot,
+        "stroke-width":lineWidth
+      });
+      layerObj.appendChild(line);
+    }
+  }
+}
+
+// functions = array of string
+//  Creates lists of points for each element
+//  Currently relies on the fact that deleted array elements are simply turned into empty strings
+
+function graph(funcObjs) {
+  var t = null;
+  removeAllPlots();
+
+  absXMin = curXMin;
+  absXMax = curXMax;
+  absYMin = curYMin;
+  absYMax = curYMax;
+  curFuncObjs = funcObjs;
+
+  if (curFuncObjs != null) {
+    var isVisible = "inline";
+    for (var i in curFuncObjs) {
+      if (curFuncObjs[i].fn != "") {
+        // Create a grouping for the plot layer
+        createPlotLayer(i);
+
+        if (curFuncObjs[i].visibility == true)
+          isVisible = "inline";
+        else
+          isVisible = "none";
+
+        // TODO This defines the initial plot settings
+        assignAttr(plots[i], {
+          "stroke": curFuncObjs[i].color,
+          "display": isVisible});
+        // Plot to the layer
+        // RECTANGULAR
+        if (curFuncObjs[i].type == "fx") {
+          curFuncObjs[i].func = new Function("x", "return " + curFuncObjs[i].fn);
+          plotFunc(curFuncObjs[i].func, i, plots[i]);
+        } else {  // POLAR and PARAMETRIC
+          // We do not need to keep the function pointer in another separate state
+          plotNonRectangular(curFuncObjs[i], i, plots[i]);
+        }
+
+        // Appends the layer to the view
+        layers['plots'].appendChild(plots[i]);
+      }
+    }
+  }
+}
+
+function createTablePlotLayer(id) {
+  tablePlots[id] = document.createElementNS(XMLNS, 'g');
+  return tablePlots[id];
+}
+
+function unplotTable() {
+  for (var i in tablePlots) {
+    try {
+      layers['plots'].removeChild(tablePlots[i]);
+      delete tablePlots[i];
+      delete tableObj[i];
+    } catch (err) { /* nothing */ }
+  }
+}
+
+function replotTable() {
+  for (var i in tableObj) {
+    plotPointArray(i, tableObj[i].ptLst, tableObj[i].radius, tableObj[i].color);
+  }
+}
+
+function plotPointObj(id, obj) {
+  if (id != null) {
+    plotPointArray(id, obj.ptLst, obj.radius, obj.color);
+    tableObj[id] = obj;
+  }
+}
+
+function plotPointArray(id, lst, radius, color) {
+  if (tablePlots[id] != undefined) {
+    try {
+      layers['plots'].removeChild(tablePlots[id]);
+    } catch (err) { /* do nothing */ }
+  }
+
+  createTablePlotLayer(id);
+
+  for (var i in lst) {
+    plotPoint(tablePlots[id], i, lst[i], radius, color);
+  }
+
+  layers['plots'].appendChild(tablePlots[id]);
+}
+
+// Plots a single point
+function plotPoint(layerObj, x, y, radius, color) {
+  if (layerObj != null) {
+    var point = document.createElementNS(XMLNS, 'circle');
+    x = valueToPixel(x);
+    y = valueToPixel(y);
+    x = parseFloat(x) - offsetX;
+    y = parseFloat(-y) - offsetY;
+
+    if (x &lt; -SVG_Canvas_Limit) {
+      x = -SVG_Canvas_Limit;
+    }
+    if (x &gt; SVG_Canvas_Limit) {
+      x = SVG_Canvas_Limit;
+    }
+    if (y &lt; -SVG_Canvas_Limit) {
+      y = -SVG_Canvas_Limit;
+    }
+    if (y &gt; SVG_Canvas_Limit) {
+      y = SVG_Canvas_Limit;
+    }
+
+    assignAttr(point, {
+      r:radius,
+      cx:x,
+      cy:y,
+      fill: color});
+
+    layerObj.appendChild(point);
+  }
+}
+
+// Plot a regular function
+function plotFunc(funcPointer, index, layerObj) {
+  var x = 0, y = 0, x2 = 0, y2 = 0;
+  if (layerObj != null) {
+    if (funcPointer != null) {
+      for (x = curXMin; x &lt; curXMax + pixelToValueScale; x += pixelToValueScale) {
+        y = funcPointer(x);
+        if (!isNaN(y) &amp;&amp; (isFinite(y))) {
+          x2 = x + pixelToValueScale;
+          y2 = funcPointer(x + pixelToValueScale);
+          if (!isNaN(y2) &amp;&amp; (isFinite(y2))) {
+            plotLine(x, y, x2, y2, index, layerObj);
+          }
+        }
+      }
+    }
+  }
+}
+
+//graph polar and parametric equations
+//When we graph regular fx, we only graph the range in the viewBox
+//Since we already have the range provided by the user, we will graph the whole thing (easier to slide or zoom)
+function plotNonRectangular(fnObj, index, layerObj) {
+
+  // Increment it here and decrement it in the IF if no error
+  errorCounter++;
+
+  if ((layerObj != null) &amp;&amp; (fnObj != null) &amp;&amp; (index != null)) {
+    if (fnObj.type != "fx") {
+
+      if ((fnObj.xFunc == null) || (fnObj.yFunc == null)) {
+        return false;
+      }
+
+
+    //set the stepSize maximum to 0.1
+    //there is no minimum stepSize because when we zoom in, we need to have lower stepSize
+    var stepSize;
+    if (pixelToValueScale &gt; 0.1)
+      stepSize = 0.1;
+    else
+      stepSize = pixelToValueScale;
+
+      var start = parseFloat(fnObj.tStart), end = parseFloat(fnObj.tEnd);
+
+    //we take it two equations from parametrics
+    //for polar equations, we convert to two equations by splitting sin and cos functions
+      for (var t = start; t &lt; end; t += stepSize) {
+        var x = fnObj.xFunc(t)
+        var y = fnObj.yFunc(t);
+        var x2 = fnObj.xFunc(t + stepSize);
+        var y2 = fnObj.yFunc(t + stepSize);
+
+        if (!isNaN(y) &amp;&amp; (isFinite(y))) {
+          if (!isNaN(y2) &amp;&amp; (isFinite(y2))) {
+            plotLine(x, y, x2, y2, index, layerObj);
+          }
+        }
+      }
+
+      errorCounter--;
+    }
+  }
+}
+
+/********************************************************************
+  Get viewbox center coordinate
+********************************************************************/
+function getCenter() {
+  //Get the current attributes of the viewbox
+  var viewBox = ROOT.getAttribute('viewBox');
+  var viewBoxArray = viewBox.split(' ');
+  var center = new Array();
+  center[0] = parseFloat(viewBoxArray[0]) + parseFloat(viewBoxArray[2]) / 2;
+  center[1] = parseFloat(viewBoxArray[1]) + parseFloat(viewBoxArray[3]) / 2;
+  return center;
+}
+
+/********************************************************************
+  Update x and y axis
+********************************************************************/
+function updateAxis() {
+  var viewBox = ROOT.getAttribute('viewBox');
+  var viewBoxArray = viewBox.split(' ');
+
+  var newCornerX = parseInt(viewBoxArray[0]);
+  var newCornerY = parseInt(viewBoxArray[1]);
+
+  //Update x-axis
+  var xAxis = guiElements['xAxis'];
+  xAxis.setAttribute('x1', newCornerX - WINDOW_WIDTH); //extra WINDOW_WIDTH was added to ensure smooth draging
+  xAxis.setAttribute('x2', newCornerX + WINDOW_WIDTH * 2); //extra WINDOW_WIDTH was added to ensure smooth draging
+  xAxis.setAttribute('y1', 0 - offsetY); //offset
+  xAxis.setAttribute('y2', 0 - offsetY); //offset
+
+  //Update y-axis
+  var yAxis = guiElements['yAxis'];
+  yAxis.setAttribute('y1', newCornerY - WINDOW_HEIGHT); //extra WINDOW_HEIGHT was added to ensure smooth draging
+  yAxis.setAttribute('y2', newCornerY + WINDOW_HEIGHT * 2); //extra WINDOW_HEIGHT was added to ensure smooth draging
+  yAxis.setAttribute('x1', 0 - offsetX); //offset
+  yAxis.setAttribute('x2', 0 - offsetX); //offset
+}
+
+//updateGrid algorithm implemented, need to integrate with the the actualy image
+//assume each grid is 50 pixel, we can change it later
+function updateGrid() {
+  //This is the most beautiful algorithm
+  //a combination of poping, offset and modular arithmetic
+  var viewBoxCenter = getCenter();
+  var x = viewBoxCenter[0];
+  var y = viewBoxCenter[1];
+  var newCornerX = x - offsetX % (WINDOW_WIDTH / 8) - x % (WINDOW_WIDTH / 8);
+  var newCornerY = y - offsetY % (WINDOW_HEIGHT / 8) - y % (WINDOW_HEIGHT / 8);
+
+  //top.con.write("in", x + ', ' + y, "black");
+  //move the grid as we either drag or zoom
+  var grids = guiElements['grids'];
+  var background = guiElements['background'];
+  translate(grids, newCornerX, newCornerY);
+  translate(background, newCornerX, newCornerY);
+}
+
+function updateNumbers() {
+  var viewBoxCenter = getCenter();
+  var x = viewBoxCenter[0];
+  var y = viewBoxCenter[1];
+  var newCornerX = x -x % (WINDOW_WIDTH / 8) - offsetX % (WINDOW_WIDTH / 8);
+  var newCornerY = y - y% (WINDOW_HEIGHT / 8) - offsetY % (WINDOW_HEIGHT / 8);
+  if(y &lt; (-WINDOW_HEIGHT / 2 - offsetY))
+    translate(layers['xNumbers'], newCornerX, y + 240);
+  else if(y &gt; (WINDOW_HEIGHT / 2 - offsetY))
+    translate(layers['xNumbers'], newCornerX, y - 240);
+  else
+    translate(layers['xNumbers'], newCornerX, -offsetY);
+  if(x &lt; (-WINDOW_WIDTH / 2 - offsetX))
+    translate(layers['yNumbers'], x + 245, newCornerY);
+  else if(x &gt; (WINDOW_WIDTH / 2 - offsetX))
+    translate(layers['yNumbers'], x - 245, newCornerY);
+  else
+    translate(layers['yNumbers'], -offsetX, newCornerY);
+  var center = getCenter();
+  for(i in yNumList) {
+    yNumList[i].firstChild.nodeValue =
+      limitNumberText(pixelToValue(-parseInt(
+        yNumList[i].getAttribute('y')) - center[1] + center[1] % (WINDOW_HEIGHT / 8) -
+        offsetY + offsetY % (WINDOW_HEIGHT / 8)), 6, 3);
+    xNumList[i].firstChild.nodeValue =
+      limitNumberText(pixelToValue(parseInt(
+        xNumList[i].getAttribute('x')) + center[0] - center[0] % (WINDOW_WIDTH / 8) +
+        offsetX - offsetX % (WINDOW_WIDTH/ 8)), 6, 3);
+  }
+  //top.con.write("in", x+', '+y+', '+offsetX+', '+offsetY, "black");
+  //top.con.write("in", newCornerX+', '+newCornerY, "red");
+}
+
+function replot() {
+  newFuncObjs = [];
+  for(i in curFuncObjs) {
+    newFuncObjs[i] = new objectCopy(curFuncObjs[i]);
+  }
+  graph(newFuncObjs);
+  replotTable();
+}
+
+/********************************************************************
+  Move viewbox to coordinate
+********************************************************************/
+//WARNING: Set curXMax and curXMin before calling
+function moveBox(x, y) {
+  x -= WINDOW_WIDTH/2;
+  y -= WINDOW_HEIGHT/2;
+
+  //Offset and set viewbox to new zoom area
+  var center = getCenter();
+  offsetX = x + WINDOW_WIDTH/2;
+  x = x - offsetX;
+  offsetY = y + WINDOW_HEIGHT/2;
+  y = y - offsetY;
+  ROOT.setAttribute('viewBox', x + ' ' + y + ' ' + WINDOW_WIDTH + ' ' + WINDOW_HEIGHT);
+  SVG_Canvas_Limit = SVG_Canvas_Limit - offsetY;
+
+  // RESET the absolute X values to reflect our current view
+  absXMax = curXMax;
+  absXMin = curXMin;
+
+  absYMax = curYMax;
+  absYMin = curYMin;
+
+  translate(layers['guiElementsLayer'], x, y);
+
+  // TODO Optimize? Show/Hide ? More caching?
+  // Re-Graph everything to be gapless in new zoom
+
+  replot();
+
+  updateAxis(); //update x and y axis
+  updateGrid();
+  updateNumbers();
+}
+
+// Handles zooming in
+function zoomIn() {
+  if (current_Zoom_Level &gt; MAX_ZOOM_LEVEL - 1) {
+    top.con.write('msg',"Sorry! You have reached the maximum zoom in level.", RED);
+    return null; //end the function
+  }
+
+  // UPDATE our curXMin and curXMax to represent our newly zoomed window
+  var difference = curXMax - curXMin;
+  curXMin = curXMin + difference/4;
+  curXMax = curXMin + difference/2;
+
+  difference = curYMax - curYMin;
+  curYMin = curYMin + difference/4;
+  curYMax = curYMin + difference/2;
+
+  // UPDATE the scale unit for the plot to know the iterative step size
+  pixelToValueScale = pixelToValueScale/2;
+  valueToPixelScale = valueToPixelScale*2;
+  current_Zoom_Level = current_Zoom_Level + 1;
+
+  if (zoomingAnimation) {
+    curCenter = getCenter();
+    assignAttr(layers['guiElementsLayer'], INVISIBLE);
+    isZooming = true;
+    navigationControlsMouseover();
+    animateZoomIn();
+  }
+  else {
+    var center = getCenter();
+    moveBox((center[0] + offsetX) * 2, (center[1] + offsetY) * 2);
+  }
+}
+
+// Handles zooming out
+function zoomOut() {
+  // UPDATE our curXMin and curXMax to represent our newly zoomed window
+  var difference = curXMax - curXMin;
+  curXMin = curXMin - difference/2;
+  curXMax = curXMax + difference/2;
+
+  difference = curYMax - curYMin;
+  curYMin = curYMin - difference/2;
+  curYMax = curYMax + difference/2;
+
+  // UPDATE the scale unit for the plot to know the iterative step size
+  pixelToValueScale = pixelToValueScale*2;
+  valueToPixelScale = valueToPixelScale/2;
+  current_Zoom_Level = current_Zoom_Level - 1;
+
+  if (zoomingAnimation) {
+    curCenter = getCenter();
+    assignAttr(layers['guiElementsLayer'], INVISIBLE);
+    isZooming = true;
+    navigationControlsMouseover();
+    animateZoomOut();
+  }
+  else {
+    var center = getCenter();
+    moveBox((center[0]+offsetX)/2,(center[1]+offsetY)/2);
+  }
+}
+
+function animateZoomIn() {
+  //Get the current attributes of the viewbox
+  var viewBox = ROOT.getAttribute('viewBox');
+  var viewBoxArray = viewBox.split(' ');
+
+  //Calculate the new viewbox positions, which are simply adjusted by the total movement done
+  var newCornerX = parseInt(viewBoxArray[0]) + 16;
+  var newCornerY = parseInt(viewBoxArray[1]) + 16;
+
+  var newWidth = parseInt(viewBoxArray[2]) - 32;
+  var newHeight = parseInt(viewBoxArray[3]) - 32;
+
+  //Set the attribute
+  ROOT.setAttribute('viewBox', newCornerX + ' ' + newCornerY + ' ' + newWidth + ' ' + newHeight);
+
+  animateTimer -= 16;
+  if (animateTimer &gt;= 0) {
+    setTimeout('animateZoomIn()', 10);
+  }
+  else {
+    var center = curCenter;
+    moveBox((center[0]+offsetX)*2,(center[1]+offsetY)*2); //offset the value back so we can offset it again in moveBox
+    assignAttr(layers['guiElementsLayer'], VISIBLE);
+    isZooming = false;
+    navigationControlsMouseout();
+    animateTimer = 128;
+  }
+}
+
+function animateZoomOut() {
+  //Get the current attributes of the viewbox
+  var viewBox = ROOT.getAttribute('viewBox');
+  var viewBoxArray = viewBox.split(' ');
+
+  //Calculate the new viewbox positions, which are simply adjusted by the total movement done
+  var newCornerX = parseInt(viewBoxArray[0]) - 32;
+  var newCornerY = parseInt(viewBoxArray[1]) - 32;
+
+  var newWidth = parseInt(viewBoxArray[2]) + 64;
+  var newHeight = parseInt(viewBoxArray[3]) + 64;
+
+  //Set the attribute
+  ROOT.setAttribute('viewBox', newCornerX + ' ' + newCornerY + ' ' + newWidth + ' ' + newHeight);
+
+  animateTimer -= 16;
+  if (animateTimer &gt;= 0) {
+    setTimeout('animateZoomOut()', 10);
+  }
+  else {
+    var center = curCenter;
+    moveBox((center[0] + offsetX) / 2, (center[1] + offsetY) / 2);
+    assignAttr(layers['guiElementsLayer'], VISIBLE);
+    isZooming = false;
+    navigationControlsMouseout();
+    animateTimer = 128;
+  }
+}
+
+// TODO Use this for checking key
+// Checks to see if a key exist
+function isValidKey(key) {
+  if ((curFuncObjs != null) &amp;&amp; (plots != null)) {
+    if ((key in curFuncObjs) &amp;&amp; (key in plots)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Updates the color of a key
+function updateColor(key, color) {
+  if (isValidKey(key) == true) {
+    assignAttr(plots[key], {"stroke":color});
+    curFuncObjs[key].color = color;
+  } else {  // TODO - DEBUGGING ONLY
+    errorCounter++;
+  }
+/* OLD METHOD
+  if ((curFuncObjs != null) &amp;&amp; (key in plots)) {
+    assignAttr(plots[key], {"stroke":color});
+
+    curFuncObjs[key].color = color;
+  }
+  */
+}
+
+// TODO REMOVE ME WHEN DONE
+function debug() {
+}
+
+function toggleVisibility(key) {
+  if (isValidKey(key) == true) {
+    var isVisible = !(curFuncObjs[key].visibility);
+    curFuncObjs[key].visibility = isVisible;
+    if (isVisible == true) {
+      assignAttr(plots[key], VISIBLE);
+    } else {
+      assignAttr(plots[key], INVISIBLE);
+    }
+  } else {
+    errorCounter++;
+  }
+	addonRemoveAll();
+}
+
+// TODO DEBUGGING (REMOVE ON PRODUCTION)
+var mainDoc = null;
+var firebugConsole = null;
+
+// Mainly for debugging
+function setMainDocument(obj) {
+  mainDoc = obj;
+}
+
+// Mainly for debugging
+function setFBConsole(obj) {
+  firebugConsole = obj;
+}
+
+// *****************************************************************************
+// Math Functions
+// Intersection, Zero, Maximum, Minimum
+// *****************************************************************************
+
+function intersection(key1, key2, lowX, upX, lowY, upY) {
+  var fn1 = curFuncObjs[key1].fn;
+  var fn2 = curFuncObjs[key2].fn;
+	var fn = fn1 + '-(' + fn2 + ')';
+	var fntot = new Function('x','return ' + fn);
+	var fnptr = new Function('x','return ' + fn1);
+	var bestXSoFar;
+	
+	var tol = 0.00000001; // tolerance of accuracy
+	if( ((fntot(lowX) &lt; 0) &amp;&amp; (fntot(upX) &lt; 0)) || 
+		((fntot(lowX) &gt; 0) &amp;&amp; (fntot(upX) &gt; 0)) )
+	{
+		min = getMin(fn,lowX,upX);
+		max = getMax(fn,lowX,upX);
+		//alert(min + '\n' + max);
+		if (Math.abs(min[1]) &lt; tol){
+			bestXSoFar = min[0];
+		} else if (Math.abs(max[1]) &lt; tol) {
+			bestXSoFar = max[0];
+		} else {
+			bestXSoFar = null
+		}
+	} else {
+		bestXSoFar = brentsMethod(fn,lowX,upX);
+	}
+
+  if (bestXSoFar != null) {
+
+			bestYSoFar = fnptr(bestXSoFar);
+
+			top.con.write('msg', 
+				'Intersection point between ' + 
+				curFuncObjs[key1].originalFn + 
+				' and ' + 
+				curFuncObjs[key2].originalFn + ' is:',
+				BLACK);
+
+			top.con.write('out', 
+				'(' + roundNumber(bestXSoFar, ROUND_PRECISION) + ', ' + 
+				roundNumber(bestYSoFar, ROUND_PRECISION) + ')', GREEN);
+
+      if(izmmPoint)
+			addonPointText(bestXSoFar, bestYSoFar, key1, 
+				roundNumber(bestXSoFar, ROUND_PRECISION) + ', ' + roundNumber(bestYSoFar, ROUND_PRECISION));
+  }
+  else
+    top.con.write('msg', 'There are no intersection points in selected area.', RED);
+
+  delete fn;
+}
+
+function zero(key1, lowX, upX, lowY, upY) {
+	// check if f(lowX) and f(upX) are the same sign
+	// if so, brent's method won't work, but the zero would only occur at a 
+	// local min or max, so use the nifty min and max functions!
+	var tol = 0.00000001; // tolerance of accuracy
+	fn = new Function('x','return ' + curFuncObjs[key1].fn);
+	
+	if( ((fn(lowX) &lt; 0) &amp;&amp; (fn(upX) &lt; 0)) || 
+		((fn(lowX) &gt; 0) &amp;&amp; (fn(upX) &gt; 0)) )
+	{
+		min = getMin(curFuncObjs[key1].fn,lowX,upX);
+		max = getMax(curFuncObjs[key1].fn,lowX,upX);
+		if (Math.abs(min[1]) &lt; tol){
+			bestXSoFar = min[0];
+		} else if (Math.abs(max[1]) &lt; tol) {
+			bestXSoFar = max[0];
+		} else {
+			bestXSoFar = null
+		}
+	} else {
+		bestXSoFar = brentsMethod(curFuncObjs[key1].fn,lowX,upX);
+	}
+
+  if (bestXSoFar != null) {
+    top.con.write('msg', 'Zero in ' + curFuncObjs[key1].originalFn + ' occurs at:', BLACK);
+    top.con.write('out', 'x = ' + roundNumber(bestXSoFar, ROUND_PRECISION), GREEN);
+    if(izmmPoint)
+      addonPointText(bestXSoFar, 0, key1, roundNumber(bestXSoFar, ROUND_PRECISION) + ', 0');
+  }
+  else
+    top.con.write('msg', "There are no zeros in the selected area.", RED);
+
+  delete fn;
+}
+
+/* get minimum of a function */
+function minimum(key1, lowX, upX, lowY, upY) {
+
+	pt = getMin(curFuncObjs[key1].fn,lowX,upX);
+	xValue = pt[0];
+	curMin = pt[1];
+
+  if (xValue == null)
+    top.con.write('msg', 'There is no local minimum between ' + lowX + ' and ' + upX, RED);
+  else {
+    top.con.write('msg', 'Min of ' + curFuncObjs[key1].originalFn + ' between ' + lowX + ' and ' + upX + ' is:', BLACK);
+    top.con.write('out', '(' + roundNumber(xValue, ROUND_PRECISION) + ', ' + roundNumber(curMin, ROUND_PRECISION) + ')', GREEN);
+    if(izmmPoint)
+      addonPointText(xValue, curMin, key1, roundNumber(xValue, ROUND_PRECISION) + ', ' + roundNumber(curMin, ROUND_PRECISION));
+  }
+  delete fn;
+}
+
+/* get maximum of a function */
+function maximum(key1, lowX, upX, lowY, upY) {
+
+	pt = getMax(curFuncObjs[key1].fn,lowX,upX);
+	xValue = pt[0];
+	curMax = pt[1];
+
+  if (xValue == null)
+    top.con.write('msg', 'There is no local maximum between ' + lowX + ' and ' + upX, RED);
+  else {
+    top.con.write('msg', 'Max of ' + curFuncObjs[key1].originalFn + ' between ' + lowX + ' and ' + upX + ' is:', BLACK);
+    top.con.write('out', '(' + roundNumber(xValue, ROUND_PRECISION) + ', ' + roundNumber(curMax, ROUND_PRECISION) + ')',GREEN);
+    if(izmmPoint)
+      addonPointText(xValue, curMax, key1, roundNumber(xValue, ROUND_PRECISION) + ', ' + roundNumber(curMax, ROUND_PRECISION));
+  }
+  delete fn;
+}
+
+/* get the maximum value */
+function getMax(fnstring,lowX,upX){
+  var fn = new Function("x", "return " + fnstring);
+	var xValue = (upX + lowX)/2;
+  var curMax = fn(xValue);
+	var newX,newMax;
+	var iters = 1000;
+	var delta = 0.1;
+
+	for(var k=0;k&lt;iters;k++){
+		newX = xValue + delta;
+		if((newX &lt; lowX) || (newX &gt; upX)) break;
+		newMax = fn(newX);
+
+		if(newMax &gt; curMax){
+			xValue = newX;
+			curMax = newMax;
+			delta = 1.5*delta;
+		} else {
+			delta = -delta;
+			newX = xValue + delta;
+			if((newX &lt; lowX) || (newX &gt; upX)) break;
+			newMax = fn(newX);
+
+			if(newMax &gt; curMax){
+				xValue = newX;
+				curMax = newMax;
+				delta = 1.5 * delta;
+			} else {
+				delta = 0.5*delta;
+			}
+		}
+		delta = Math.max(-1,Math.min(1,delta));
+	}
+
+	//check endpoints
+	newMax = fn(lowX);
+	if(newMax > curMax) {
+		xValue = lowX;
+		curMax = newMax;
+	}
+	newMax = fn(upX);
+	if(newMax > curMax) {
+		xValue = upX;
+		curMax = newMax;
+	}
+	return [xValue,curMax];
+}
+
+/* function to obtain minimum */
+function getMin(fnstring,lowX,upX){
+  var fn = new Function("x", "return " + fnstring);
+	var xValue = (upX + lowX)/2;
+  var curMin = fn(xValue);
+	var newX,newMin;
+	var iters = 1000;
+	var delta = 0.1;
+
+	for(var k=0;k&lt;iters;k++){
+		newX = xValue + delta;
+		if((newX &lt; lowX) || (newX &gt; upX)) break;
+		newMin = fn(newX);
+
+		if(newMin &lt; curMin){
+			xValue = newX;
+			curMin = newMin;
+			delta = 1.5*delta;
+		} else {
+			delta = -delta;
+			newX = xValue + delta;
+			if((newX &lt; lowX) || (newX &gt; upX)) break;
+			newMin = fn(newX);
+
+			if(newMin &lt; curMin){
+				xValue = newX;
+				curMin = newMin;
+				delta = 1.5 * delta;
+			} else {
+				delta = 0.5*delta;
+			}
+		}
+		delta = Math.max(-1,Math.min(1,delta));
+	}
+
+	//check endpoints
+	newMin = fn(lowX);
+	if(newMin &lt; curMin) {
+		xValue = lowX;
+		curMin = newMin;
+	}
+	newMin = fn(upX);
+	if(newMin &lt; curMin) {
+		xValue = upX;
+		curMin = newMin;
+	}
+
+	return [xValue,curMin];
+}
+
+/* Brent's method for zero finding
+ * Assumes f(a) and f(b) are opposite signs
+ */
+function brentsMethod(fnstring, a, b) {
+
+	var iters = 100;
+	var eps = 0.00000000001; //floating point precision
+	var tol = 0.00000001; // tolerance of accuracy
+  var fn = new Function("x","return " + fnstring);
+	var c = b;
+	var d,e,min1,min2;
+	var fa = fn(a);
+	var fb = fn(b);
+	var fc,p,q,r,s,tol1,xm;
+
+	if( ((fa &gt; 0) &amp;&amp; (fb &gt; 0) ) || ( (fa &lt; 0) &amp;&amp; (fb &lt; 0)) ) {
+		return null;
+	}
+		
+	fc = fb;
+
+	for(var i=0;i&lt;iters;i++){
+
+	if( ((fc &gt; 0) &amp;&amp; (fb &gt; 0) ) || ( (fc &lt; 0) &amp;&amp; (fb &lt; 0)) ) {
+			c = a;
+			fc = fa;
+			e = b-a;
+			d = e;
+		}
+
+		if( Math.abs(fc) &lt; Math.abs(fb) ){
+			a = b;
+			b = c;
+			c = a;
+			fa = fb;
+			fb = fc;
+			fc = fa;
+		}
+
+		tol1 = 2*eps*Math.abs(b) + 0.5*tol; 
+		xm = (c-b)/2;
+
+		if((Math.abs(xm) &lt;= tol1) || (fb == 0)) return b;
+
+		if( (Math.abs(e) &gt;= tol1) &amp;&amp; (Math.abs(fa) &gt; Math.abs(fb)) ){
+			s = fb/fa;
+			if (a == c) {
+				p = 2.0*xm*s;
+				q = 1-s;
+			} else {
+				q = fa/fc;
+				r = fb/fc;
+				p = s*(2*xm*q*(q-r)-(b-a)*(r-1));
+				q = (q-1)*(r-1)*(s-1);
+			}
+
+			if(p&gt;0) q = -q;
+			p = Math.abs(p);
+			min1 = 3*xm*q-Math.abs(tol1*q);
+			min2 = Math.abs(e*q);
+
+			if(2*p &lt; (min1 &lt; min2 ? min1 : min2) ){
+				e = d;
+				d = p/q;
+			} else {
+				d = xm;
+				e = d;
+			}
+		} else {
+			d = xm;
+			e = d;
+		}
+		a = b;
+		fa = fb;
+		if(Math.abs(d) &gt; tol1){
+			b += d;
+		} else {
+			b += sign(tol1,xm);
+		}
+		fb = fn(b);
+	}
+	return null;
+}
+
+function sign(x,y) {
+	if(y&gt;=0) return Math.abs(x);
+	return -Math.abs(x);
+}
+
+function roundNumber(num, dec) {
+  return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
+}
+
+</script>
+</defs>
+
+</svg>

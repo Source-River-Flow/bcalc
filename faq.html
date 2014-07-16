@@ -1,0 +1,408 @@
+<html>
+  <head>
+
+    <!-- Javascript Includes -->
+
+
+    <!-- JQuery -->
+      <script type="text/javascript" src="js/jquery-1.3.2.js"></script>
+
+    <script type="text/javascript" src="js/util.js"></script>
+    <!-- CSS Includes -->
+    <link rel="stylesheet" type="text/css" href="css/bcalc.css" />
+
+
+  </head>
+
+  <body>
+    <div id="site-wrapper">
+      <div id="leftBanner"></div>
+      <div id="mainContent">
+      <div id="header">
+        <div id="logo" class="faux_link" onClick="window.location='index.html'"></div>
+      </div>
+
+      <div id="main-tabs">
+        <ul>
+		  <li><a href="index.html">home</a></li>
+          <li><a href="faq.html" class="activated">help</a></li>
+          <li><a href="about.html">about</a></li>
+          <li><a href="feedback.html">feedback</a></li>
+        </ul>
+      </div>
+      <div class="clear"></div>
+      <div id="block-content-header"></div>
+      <div id="block-content">
+		<h3>How to Make Stuff Work</h3>
+		
+        <a name="Contents"></a>
+		<h4>Contents</h4>
+		<ul>
+			<li><a href="#GettingStarted">Getting Started</li>
+			<li><a href="#Equations">Equations</a></li>
+			<li><a href="#BasicCalc">Basic Calculator</a></li>
+			<li><a href="#Graph">The Graph</a></li>
+			<li><a href="#Polar">Polar</a></li>
+			<li><a href="#Parametric">Parametric</a></li>
+			<li><a href="#Numerical">Numerical</a></li>
+			<li><a href="#Tables">Tables</a></li>
+			<li><a href="#Advanced">Advanced</a></span></li>
+		</ul>
+
+		<br />
+		
+		<a name="GettingStarted"></a>
+		<h4>Getting Started</h4>
+		
+		<p>When you first visit bCalc.net, this is what you'll see.</p>
+		<img src="helpfiles/image101.jpg" alt="Index Screen" width="550" height="355" />
+		
+		<p>All graphing calculator functionality is organized into six tabs.<br />
+		<img src="helpfiles/image003.jpg" alt="Tabs" width="489" height="22" />
+		<ul>
+			<li><a href="#Equations">Equations</a>: This is the default tab, and where you’ll most likely spend most of your time.  Here you 		can plot your normal, everyday rectangular equations.</li>
+			<li><a href="#Polar">Polar</a>: For more advanced math classes, here, you can plot polar equations in the form of r = r(t).</li>
+			<li><a href="#Parametric">Parametric</a>: In this tab, you can plot parametric equations in the form of x = x(t), y = y(t).</li>
+			<li><a href="#Numerical">Numerical</a>: For calculus classes, you can calculate definite derivatives, definite integrals, and plot tangent lines.</li>
+			<li><a href="#Tables">Tables</a>: Handy for statistics classes, you can create a table of values from an equation.</li>
+			<li><a href="#Advanced">Advanced</a>: This is where you can customize options for the graph, such as the quality and animation. </li>
+		</ul>
+		<p><a href="#Contents"> Back to the top.</a>
+		
+		
+		<br /><br />
+		
+		
+		<a name="Equations"></a>
+		<h4>Equations</h4>
+		<p>This is probably where you want to be most of the time. Here, you can plot rectangular equations (the normal y=mx+b type equations).</p>
+		<img src="helpfiles/image103.jpg" alt="Equations Tab" width="479" height="208" />
+		
+		<p>To plot an equation, type the equation in the text field to the right of "f(x) =" and click "Draw Graph". The plot should appear on the graph to the right.</p>
+		<img src="helpfiles/image104.jpg" alt="x^2 in Equations Tab" width="482" height="205" />
+		
+		<p>This is what you should see on the graph to the right:</p>
+		<img src="helpfiles/image105.jpg" alt="x^2 in Graph" width="510" height="512"/>
+		<p>Also, you can share your graph with your friends.</p>
+			<ul>
+				<li> To share your graph, click "Share Graph," and a URL will appear to the right of the button.  You can remove the link by clicking the "X" to the right of the link.</li>
+              <img src="helpfiles/image106.jpg" alt="Share" width="460" height="196"/>
+			</ul>
+		<p>You can plot multiple equations at the same time. By default, you will see three function fields. To add another function field, click the "+ add equation" button.</p>
+		<img src="helpfiles/image107.jpg" alt="Before Add Function" width="479" height="206"/>
+		
+		<p>After clicking "+ equation":</p>
+		<img src="helpfiles/image108.jpg" alt="After Add Function" width="481" height="235"/>
+
+		<p>Here is an example of multiple plots:</p>
+		<img src="helpfiles/image109.jpg" alt="Multiple Functions" width="481" height="234"/>
+		
+		<p>And the graph:</p>
+		<img src="helpfiles/image110.jpg" alt="Multiple Functions Graphed" width="509" height="513"/>
+		
+        <p>You can also generate a printer friendly page of your graph.
+        <ul>
+        <li> To print, click the "Print&quot; button.</li>
+        <img src="helpfiles/image145.jpg" alt="Print Button" width="481" height="234"/>
+        <li> Here is a sample print page.  The graph is the to the left and the equations are color coded to the right. </li>
+        </ul>
+        <img src="helpfiles/image146.jpg" alt="Multiple Functions" width="550" height="355"/></p>
+		<p>To the right of the text field are some options to customize each plot.</p>
+        
+		<img src="helpfiles/image111.jpg" alt="Function Options" width="478" height="58"/>
+		
+		<ul>
+			<li><b>Color</b>. By default, each graph should have a different preset color. When you click "+add equation" you should get a different color than what is already plotted.</li>
+				<img src="helpfiles/image112.jpg" alt="Color Option" width="478" height="58"/>
+				<ul>
+					<li> You can customize your color by clicking on the colored box.</li>
+						<img src="helpfiles/image113.jpg" alt="Color Picker" width="309" height="183"/>
+					<li>The color picker pops out. To change color, click on the spectrum of colors on the top of the menu. Once you have selected the color you like, you can fine tune it by clicking on the box on the left. To save your color change, click "OK." Otherwise, click "Cancel."</li>
+				</ul>
+			<li><b>Symbols</b>.</li>
+				<img src="helpfiles/image114.jpg" alt="Symbols" width="478" height="58"/>
+			<li><b>Show/Hide</b>.</li>
+				<img src="helpfiles/image116.jpg" alt="Show/Hide" width="478" height="58"/>
+				<ul>
+					<li>By default, your plot is shown on the graph, and is represented by the "Eye" symbol. Click on the "Eye" to hide the plot.  An "X" will now be over the "Eye." To show the graph again, click on the "Eye" again.</li>
+					<li>Hidden:</li>
+						<img src="helpfiles/image117.jpg" alt="Show/Hide" width="483" height="67"/>
+				</ul>
+			<li><b>Delete</b>. When you click on this button, the plot will no longer be shown on the graph, and the equation field will disappear.</li>
+				<img src="helpfiles/image118.jpg" alt="Show/Hide" width="478" height="58"/>
+		</ul>
+
+		<a href="#Contents">Back to the Top.</a>
+
+		
+		<br /><br />
+		
+		
+		<a name="BasicCalc"></a>
+		<h4>Basic Calculator</h4>
+		<p>Below the function fields is the "Basic Calculator"</p>
+		<img src="helpfiles/image119.jpg" alt="Basic Calculator"/>
+		<ul>
+			<li>Here, you can type in equations to evaluate. For example, typing "5+6" and clicking enter will return 11. You can also press "Enter" on your keyboard to evaluate equations.</li>
+				<img src="helpfiles/image120.jpg" alt="Basic Calculator Example"/>
+			<li>To scroll through what you previously typed, you can press the "Up Arrow" and "Down Arrow" on your keyboard.</li>
+			<li>To clear the screen, you can either click “Click Screen" or type "clear" and press “Enter."</li>
+			<li>In addition, you can type JavaScript in the console and create your own functions.</li>
+		</ul>
+		
+		<a href="#Contents">Back to the Top</a></p>
+		
+		
+		<br /><br/>
+
+		
+		<a name="Graph"></a>
+		<h4>The Graph</h4>
+		<img src="helpfiles/image122.jpg" alt="Graph"/>
+		<ul>
+			<li><b>Reset</b>: resets the view to the original view, centered at the origin, -8 &lt; x &lt; 8, -8 &lt; y &lt; 8</li>
+			<li><b>Origin</b>: centers the view to the origin of the graph</li>
+			<li><b>+</b>: zoom in; click to get a more detailed look at the graph</li>
+			<li><b>-</b>: zoom out; click to view more of the graph at once</li>
+			<li><b>Bottom left corner—X,Y</b>: shows the current x and y coordinates of the mouse position</li>
+			<li><b>Toolbar Menu</b>:</li>
+				<ul>
+					<li><b>Grab</b>: default mode, you can move the view of graph by clicking and holding down your mouse on the graph and moving your mouse.</li>
+					<li><b>Intersection</b>: calculates the first intersection of the selected plots; to find the intersection:</li>
+						<ul>
+							<li>Click the Intersection button. A menu will appear to allow you to select which functions you would like the intersection of.</li>
+							<li>Click and hold the mouse near the intersection, and drag the mouse to get the rectangular box around the intersection.</li>
+							<li>The intersection will appear on the graph and in the Basic Calculator.</li>
+						</ul>
+                  <img src="helpfiles/image123.jpg" alt="Intersection Example" width="500" height="322" />
+				</ul>
+			<li><b>Zero</b>: calculates where the plot crosses the X-axis; to find the zero:</li>
+				<ul>
+					<li>Click the Zero button. A menu will appear for you to select which function to find the Zero of.</li>
+					<li>Click and hold the mouse near the zero, and drag the mouse to get the rectangular box around the zero.</li>
+					<li>The zero will appear on the graph and in the Basic Calculator.</li>
+                  <img src="helpfiles/image124.jpg" alt="Zero Example" width="500" height="322" />
+				</ul>
+			<li><b>Max</b>: calculates the maximum value in the enclosed interval; to find the max:</li>
+				<ul>
+					<li>Click the Maximum button. A menu will appear for you to select which function to find the maximum of.</li>
+					<li>Click and hold the mouse at the beginning of the interval and drag the box until the end of the interval.</li>
+					<li>The maximum will appear on the graph and in the Basic Calculator.</li>
+                  <img src="helpfiles/image125.jpg" alt="Max Example" width="500" height="322" />
+        </ul>
+			<li><b>Min</b>: calculates the minimum value in the enclosed interval; to find the min:</li>
+				<ul>
+					<li>Click the Minimum button. A menu will appear for you to select which function to find the minimum of.</li>
+					<li>Click and hold the mouse near the zero, and drag the mouse to get the box until the end of the interval.</li>
+					<li>The minimum will appear on the graph and in the Basic Calculator.</li>
+                  <img src="helpfiles/image126.jpg" alt="Min Example" width="500" height="322" />
+				</ul>
+			<li><b>Trace</b>: find the value of the function at a certain X value; to use trace:</li>
+				<ul>
+					<li>Position your mouse near the point you want the value of and click.</li>
+					<li>The point will appear on the graph and in the Basic Calculator.</li>
+                  <img src="helpfiles/image144.jpg" alt="Trace Example" width="500" height="322" />
+				</ul>
+		</ul>
+
+		<a href="#Contents">Back to the Top</a>
+
+		
+		<br /><br />
+
+		
+		<a name="Polar"></a>
+		<h4>Polar</h4>
+		<img src="helpfiles/image127.jpg" alt="Polar Tab" width="482" height="175"/>
+		
+		<p>Here, we have two fields of input per equation:</p>
+		<ul>
+			<li>r(t) is the equation, and t field sets the range of the values of theta you’d like to plot</li>
+			<li>To add more function fields, click "+ add polar equation."</li>
+			<li><b>NOTE: use t as the variable, not x</b></li>
+			<li>Plotting works the same way as rectangular equations.</li>
+				<ul>
+					<li>Type in your equation and set the bounds for t</li>
+					<li>Click "Draw Graph"</li>
+				</ul>
+		</ul>
+		<p>Example:</p>
+		<p>The butterfly curve: e^sin(t) - 2cos(4t) + (sin((2t-pi)/24))^5</p>
+		<img src="helpfiles/image128.jpg" alt="Butterfly Curve Equation" width="482" height="176"/>
+		<p>Graph:</p>
+		<img src="helpfiles/image129.jpg" alt="Butterfly Curve Graph"/>
+		
+		<br/>
+		<a href="#Contents">Back to the Top</a>
+		
+		
+		<br /><br />
+		
+
+		<a name="Parametric"></a>
+		<h4>Parametric</h4>
+		<img src="helpfiles/image130.jpg" alt="Parametric Tab" width="483" height="205"/>
+		
+		<p>For parametric equations, we have three fields of input:</p>
+		<ul>
+			<li>x(t), y(t), and t bounds</li>
+			<li>To add more function fields, click "+ add parametric equation."</li>
+			<li><b>NOTE: use t as the variable, not x</b></li>
+			<li>As with rectangular and polar, plotting works pretty much the same</li>
+			<ul>
+				<li>Type in your equations for x(t), y(t) and set the bounds for t (theta)</li>
+				<ul>
+					<li>i.e 0 to 3.14 (pi approximation)</li>
+				</ul>
+				<li>Click "Draw Graph"</li>
+			</ul>
+			<li>Again, we have the same features as we do for polar and rectangular equations</li>
+		</ul>
+		<p>Example: y(t) = sin(31t), x(t) = 10cos(31t)</p>
+		<img src="helpfiles/image131.jpg" alt="Parametric Example Equation" width="483" height="205"/>
+		<p>Graph:</p>
+		<img src="helpfiles/image132.jpg" alt="Parametric Example Graph"/>
+		
+		<br /><br />
+		<a href="#Contents">Back to the Top</a>
+		
+		
+		<br /><br />
+		
+		
+		<a name="Numerical"></a>
+		<h4>Numerical</h4>
+		<img src="helpfiles/image133.jpg" alt="Numerical Tab" width="483" height="400"/>
+		
+		<p>On the Numerical Section, we can calculate definite derivatives and integrals for you.</p>
+		<ul>
+			<li><b>Definite Derivative</b></li>
+			<ul>
+				<li>We have two fields:</li>
+				<ul>
+					<li>Function: the equation you want to find the derivative of</li>
+					<li>Point: the point at which you want the derivative</li>
+				</ul>
+				<li>To use:</li>
+				<ul>
+					<li>Fill in the Function and Point fields</li>
+					<li>Click "Calculate Tangent Line"</li>
+					<li>An f(x) field pops up with the tangent line at the point</li>
+					<ul>
+						<li>You can graph this line on the graph, just like a normal rectangular equation</li>
+						<li>The value of the derivative at the point is the slope of the tangent line (y = m*x+b; m is the derivative)</li>
+					</ul>
+				</ul>
+			</ul>
+		</ul>
+		
+		<p>Example:</p>
+		<img src="helpfiles/image134.jpg" alt="Numerical Derivative Example Input" width="482" height="409"/>
+		<p>Graph:</p>
+		<img src="helpfiles/image135.jpg" alt="Numerical Derivative Example Graph" width="513" height="548"/>
+		<p><b>NOTE: You will need to plot the function on the "Equations" tab separately from the "Numerical" tab</b>.</p>
+
+		<br />
+		
+		<ul>
+			<li><b>Definite Integrals</b></li>
+				<img src="helpfiles/image136.png" alt="General Integral Formula"/>
+			<ul>
+				<li>There are three fields:</li>
+				<ul>
+					<li>Function: the equation you want to find the integral of</li>
+					<li>Left Bound: the lower bound of the interval you want the integral of; a in the "integral equation"</li>
+					<li>Right Bound: the upper bound of the interval you want the integral of; b in the "integral equation"</li>
+				</ul>
+			</ul>
+		</ul>
+
+		<p>Example:</p>
+		<img src="helpfiles/image137.jpg" alt="Parametric Example Equation" width="483" height="419"/>
+
+		<br /><br />
+		<a href="#Contents">Back to the Top</a>
+
+		
+		<br /><br />
+		<a name="Tables"></a>
+		<h4>Tables</h4>
+		<p>Here is the Tables tab:</p>
+		<img src="helpfiles/image138.jpg" alt="Tables"/>
+		<p>To add a function to the table:</p>
+		<ul>
+			<li>Type the function in the function field and then click "Add Column."</li>
+		</ul>
+		<img src="helpfiles/image139.jpg" alt="Tables - Add Column" width="468" height="396"/>
+		
+		<p>To add X-Values to the table, click "Add Row."</p>
+		<img src="helpfiles/image140.jpg" alt="Tables - Add X-Value" width="468" height="395"/>
+		
+		<p>To set X-Values:</p>
+		<ul>
+			<li>Double click on the X-Value cell you’d like to change</li>
+				<img src="helpfiles/image141.jpg" alt="PTables - Double Click to Add X-Value" width="468" height="397"/>
+			<li>Type the new value you and press Enter.</li>
+				<img src="helpfiles/image142.jpg" alt="Tables - New X - Value" width="468" height="397"/>
+		</ul>
+
+		<a href="#Contents">Back to the Top</a>
+
+		
+		<br /><br />
+		
+		
+		<a name="Advanced"></a>
+		<h4>Advanced</h4>
+		<p>Here is the Advanced Tab:</p>
+		<img src="helpfiles/image143.jpg" alt="Advanced Tab" />
+		<p>Display</p>
+		<ul>
+			<li><b>Show</b>:</li>
+			<ul>
+				<li>Toolbar: show/hide the Mouse Function menu on the top right</li>
+				<li>Mouse Positions: show/hide the X,Y position of the mouse on the bottom left</li>
+				<li>Gridlines: show/hide gridlines on the graph</li>
+				<li>Navigation Tools: show/hide view options (Reset, Origin, etc) on the top left</li>
+				<li>Graph Labels: show/hide axis labels</li>
+				<li>Axis: show/hide the axis</li>
+			</ul>
+			<li><b>Extras</b></li>
+			<ul>
+				<li><b>Enable</b>:</li>
+				<ul>
+					<li><i>Zoom Animation</i>: turn off/on zooming animation. If you have an older computer, it is recommended you turn off the zoom animation.</li>
+					<li><i>Multiple Trace</i>: turn off/on multiple trace capability--calculates Y value for the X value clicked for all functions plotted.</li>
+					<li><i>Max/Min/Zero/Intersection Point</i>: after calculating max/min/zero/intersection, toggle whether to plot the calculated point on the graph</li>
+					<li><i>Keep last trace point</i>: toggles feature when in trace mode, clicking a point will cause a point to be drawn on the graph</li>
+					<li><i>Toolbox help dialog</i>: turn off/on pop up help messages for the graph functions</li>
+                    <li><i>Plot graph types separately</i>: toggle whether to plot rectangular, polar, and parametric plots on the same graph
+			  </ul>
+			</ul>
+		</ul>
+
+		<a href="#Contents">Back to the Top</a>
+		<br />
+
+	  </div>
+      <div id="block-content-footer"></div>
+     
+	</div>
+		<div id="rightBanner">
+			<script type="text/javascript"><!--
+				google_ad_client = "ca-pub-6597342191018566";
+				/* Sidebar */
+				google_ad_slot = "6358401879";
+				google_ad_width = 160;
+				google_ad_height = 600;
+				//-->
+				</script>
+				<script type="text/javascript"
+				src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+			</script>
+		</div>
+
+    </div>
+    <div class="clear"></div>
+  </body>
+</html>

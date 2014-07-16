@@ -1,0 +1,318 @@
+<html>
+  <head>
+    <title>bcalc: online graphing calculator</title>
+    <!-- Javascript Includes -->
+
+    <!-- JQuery -->
+    <script type="text/javascript" src="js/jquery-1.3.2.min.js"></script>
+
+    <!--<script type="text/javascript" src="js/unparse.js"></script>-->
+    <script type="text/javascript" src="js/globals.js"></script>
+    <script type="text/javascript" src="js/numerical.js"></script>
+    <script type="text/javascript" src="js/parser.js"></script>
+    <script type="text/javascript" src="js/util.js"></script>
+    <script type="text/javascript" src="js/svg_graph.js"></script>
+    <script type="text/javascript" src="js/my_console.js"></script>
+    <script type="text/javascript" language="JavaScript" src="js/urlfunctions.js"></script>
+
+    <!-- For Table Manipulation -->
+    <!-- jQuery Plugin for drag-n-drop table -->
+    <!-- http://www.isocra.com/2008/02/table-drag-and-drop-jquery-plugin/ -->
+    <script type="text/javascript" src="js/jquery.tablednd_0_5.js"></script>
+    <!-- jQuery Plugin for inline editing -->
+    <!-- http://www.appelsiini.net/projects/jeditable -->
+    <script type="text/javascript" src="js/jquery.jeditable.mini.js"></script>
+    <script type="text/javascript" src="js/tableUtil.js"></script>
+
+    <script type="text/javascript" language="JavaScript" src="js/colorpicker.js"></script>
+
+    <!-- CSS Includes -->
+    <link rel="stylesheet" type="text/css" href="css/bcalc.css" />
+
+    <!-- Onload functions -->
+    <script type="text/javascript">
+			if(navigator.appName.match('Internet Explorer'))
+				window.location = 'compatibility.html';
+      $(document).ready(init);
+    </script>
+	<script type="text/javascript" src="http://w.sharethis.com/button/buttons.js"></script>
+	<script type="text/javascript">stLight.options({publisher: "24d77f95-014b-477e-8ed5-9961d870f218"});</script>
+  </head>
+
+  <body id="pageBody">
+  
+    <div id="site-wrapper">
+		<div id="leftBanner">
+		</div>
+		<div id="mainContent">
+		  <div id="header">
+			<div id="logo" class="faux_link" onClick="window.location='index.html'"><img src="img/logo.png"/></div>
+			<div id="main-tabs">
+				<ul>
+				  <li><a href="index.html" class="activated">home</a></li>
+				  <li><a href="faq.html">help</a></li>
+				  <li><a href="about.html">about</a></li>
+				  <li><a href="feedback.html">feedback</a></li>
+				</ul>
+			</div>
+		  </div>
+
+		  <div class="clear">
+		  </div>
+			<p style="width:950;color:#FFFFFF; margin:3;">bCalc.net is an online graphing calculator. We know that sometimes you need to use a graphing calculator but don’t always have one handy. This is where bCalc comes in. Create graphs, even parametric or polar ones, and analyze them with the built-in tools.</p>
+			
+		  <div id="function-tabs">
+			<!-- facebook -->
+			<div style="padding-bottom:20px; padding-top:2px; float:left;">
+				<script src="http://connect.facebook.net/en_US/all.js#xfbml=1"></script>
+				<div class="fb-like" data-href="https://www.facebook.com/pages/bCalcnet/378925755515042" data-send="false" data-layout="button_count" data-width="0" data-show-faces="true" style="maring-top:10px;">
+				</div>
+			</div>
+			<!-- the rest -->
+			<div style="padding-bottom:20px; padding-left:10px; float:left;">
+				<span class='st_googleplus_hcount' displayText='Google +'></span>
+				<span class='st_twitter_hcount' displayText='Tweet'></span>
+			</div>
+			<div class="clear"></div>
+			<ul>
+			  <li class="selected" id="equations" onClick="javascript:toggleTabs(this)">Equations</li>
+			  <li class="notSelected" id="polar" onClick="javascript:toggleTabs(this)">Polar</li>
+			  <li class="notSelected" id="parametric" onClick="javascript:toggleTabs(this)">Parametric</li>
+			  <li class="notSelected" id="numerical" onClick="javascript:toggleTabs(this)">Numerical</li>
+			  <li class="notSelected" id="tables" onClick="javascript:toggleTabs(this)">Tables</li>
+			  <li class="notSelected" id="advanced" onClick="javascript:toggleTabs(this)">Advanced</li>
+			</ul>
+		  </div>
+		  <div class="clear"></div>
+		  <div id="left">
+			<div id="content">
+				<div id="legend">
+					<div class="colorbox legend-icon" style="background-color:#1b89cf;"> </div> color <img class="legend-icon" src="img/equation_symbols.png"> symbols <img class="legend-icon" src="img/equation_visible.png"> show/hide <img class="legend-icon" src="img/equation_delete.png"> delete
+				</div>
+			  <!-- create different div for each tab; tab names must match link name -->
+
+			  <!-- Equations Tab -->
+			  <div id="equations_content" class="selectedContent">
+
+				<div id="equation_set"> </div>
+				<div class="clear"></div>
+
+				<span style="float:left;"><b><a class="faux_link" title="function" onClick="addEquation('fx')"><img src="img/equation_add.png" class="addequation">add equation</a></b></span>
+
+				<input id="drawGraph" style="float:right;" type="button" value="Draw Graph" onClick="javascript:generate_graph();" />
+		  <input id="getURL" style="float:right;" type="button" value="Share" onClick="javascript:buildURL(true);"/>
+				<input id="printGraph" style="float:right;" type="button" value="Print" onClick="javascript:window.open(buildURL(false),'print');" />
+				<div class="clear"></div>
+			  </div>
+			  <!-- end equations tab -->
+
+			  <!-- Polar Equations -->
+			  <div id="polar_content" class="notSelectedContent">
+
+				<div id="polarequations_set"> </div>
+				<div class="clear"></div>
+				<span style="float:left;"><b><a class="faux_link" title="polar" onClick="addEquation('polar')"><img src="img/equation_add.png" class="addequation">add polar equation</a></b></span>
+
+				<input id="drawGraph" style="float:right;" type="button" value="Draw Graph" onClick="javascript:generate_graph();" />
+		  <input id="getURL" style="float:right;" type="button" value="Share" onClick="javascript:buildURL(true);"/>
+		  <input id="printGraph" style="float:right;" type="button" value="Print" onClick="javascript:window.open(buildURL(false),'print');" />
+				<div class="clear"></div>
+			  </div>
+			  <!-- end polar tab -->
+
+			  <!-- Parametric Equations -->
+			  <div id="parametric_content" class="notSelectedContent">
+				<div id="parametricequations_set"> </div>
+				<div class="clear"></div>
+				<span style="float:left;"><b><a class="faux_link" title="parametric" onClick="addEquation('param')"><img src="img/equation_add.png" class="addequation">add parametric equation</a></b></span>
+
+				<input id="drawGraph" style="float:right;" type="button" value="Draw Graph" onClick="javascript:generate_graph();" />
+		  <input id="getURL" style="float:right;" type="button" value="Share" onClick="javascript:buildURL(true);"/>
+				<input id="printGraph" style="float:right;" type="button" value="Print" onClick="javascript:window.open(buildURL(false),'print');" />
+				<div class="clear"></div>
+			  </div>
+			  <!-- end parametric tab -->
+
+			  <!-- numerical Tab -->
+			  <div id="numerical_content" class="notSelectedContent">
+
+				<div id="differentiation">
+				  <h3>Definite Derivatives</h3>
+				  <label>Function:</label> <input id="derivative_function" type="text" value="x" /> <br />
+				  <label>Point:</label> <input id="derivative_pt" class="short" type="text" value="0" /> <br />
+				  <input id="calculate_derivative" type="button" value="Calculate Tangent Line" onClick="javascript:calculate_derivative();" /><br />
+								<br />
+				  <div id="derivative_answer"></div>
+								<br />
+				  <div align="right">
+					<input style="display:none;" id="drawGraphNumerical" type="button" value="Draw Graph" onClick="javascript:generate_graph();" />
+				  </div>
+
+				</div>
+				<div id="integration">
+				  <h3>Definite Integrals</h3>
+				  <label>Function:</label> <input id="integral_function" type="text" value="x" /> <br />
+				  <label>left bound:</label> <input id="integral_lower_bound" class="short" type="text" value="0" /> <br />
+				  <label>right bound:</label> <input id="integral_upper_bound" class="short" type="text" value="1" /> <br />
+				  <input id="calculate_integral" type="button" value="Calculate Integral" onClick="javascript:calculate_integral();" /><br />
+				  <div id="integral_answer"></div>
+				</div>
+
+			  </div>
+			  <!-- end numerical Tab -->
+
+			  <!-- Tables tab -->
+			  <div id="tables_content" class="notSelectedContent">
+				<b>Instruction:</b><br />Double-click the row or column header to edit the values directly.<br />You can also rearrange the rows by dragging them.<br />
+				<!-- Specifying the nodrop and nodrag -->
+				<!-- Row format = row_{i} -->
+				<!-- Cell format = cell_{row}_{column} -->
+				<!-- This row HAS TO EXIST, you can change its contents but do not change its ID without updating the ENTIRE code -->
+				<div id="table_wrapper" class="container">
+				  <table id="plot_table" border="1" cellspacing="0" cellpadding="2">
+					<tbody>
+					  <tr id="row_0" class="nodrop nodrag rowHead">
+						<td id="cell_0_0" align="center" class="">X-Value</td>
+						<td id="cell_0_1" align="center" class="" style="min-width:60px">x</td>
+					  </tr>
+					</tbody>
+				  </table>
+				</div>
+
+				<div align="center">
+				  <input type="button" value="Add Row" onClick="javascript:appendRow();" />
+				  <input type="button" value="Add Column" onClick="javascript:appendColumn();" />
+				  <input type="button" value="Plot" onClick="javascript:tablePlot()" />
+				  <input type="button" value="Clear Plots" onClick="javascript:unplotTable();" />
+				  <input type="button" value="Reset Table" onClick="javascript:resetTable();" />
+				</div>
+				<br />
+				<label>Function:</label> <input id="new_column" type="text" value="x + 1" /><br />
+				<label>Point Size:</label> <select id="dotSize">
+				  <option value="1">1</option>
+				  <option value="2">2</option>
+				  <option value="3">3</option>
+				  <option value="4">4</option>
+				  <option value="5" selected="selected">5</option>
+				  <option value="6">6</option>
+				  <option value="7">7</option>
+				  <option value="8">8</option>
+				  <option value="9">9</option>
+				  <option value="10">10</option>
+				</select><br />
+			  </div>
+			  <!-- end tables tab -->
+
+			  <div id="advanced_content" class="notSelectedContent">
+			  <h3>Display</h3>
+			  <form>
+			  <b>Show:</b>
+			  </br>
+				<div class="advanced_box">
+					<input type="checkbox" name="show" value="toolbar" checked="true" onclick="window.toggleLayer('toolbar', this.checked)"/> Toolbar <br />
+					<input type="checkbox" name="show" value="nav_tools" checked="true" onclick="window.toggleLayer('nav_tools', this.checked)"/>Navigation Tools <br />
+				</div>
+				<div class="advanced_box">
+					<input type="checkbox" name="show" value="mouse_pos" checked="true" onclick="window.toggleLayer('mouse_pos', this.checked)"/> Mouse Positions <br />
+					<input type="checkbox" name="show" value="labels" checked="true" onclick="window.toggleLayer('labels', this.checked)"/> Graph Labels <br />
+				</div>
+				<div class="advanced_box">
+					<input type="checkbox" name="show" value="grid_lines" checked="true" onclick="window.toggleLayer('grid_lines', this.checked)"/> Gridlines <br />
+					<input type="checkbox" name="show" value="axis" checked="true" onclick="window.toggleLayer('axis', this.checked)"/> Axis <br />
+				</div>
+				<div class="clear"></div>
+
+			  <b>Line Width</b>: <input id="firstStrokeOption" type="radio" name="line_width" value="1" checked="true" onclick="window.changeLineWidth(1)"/>1 <input type="radio" name="line_width" value="2" onclick="window.changeLineWidth(2)"/>2 <input type="radio" name="line_width" value="3" onclick="window.changeLineWidth(3)"/>3
+			  <br /><br />
+			  <h3>Extras</h3>
+			  <b>Enable:</b>
+			  </br>
+				<div class="advanced_box">
+					<input type="checkbox" name="enable" value="zoom_anim" checked="true" onclick="window.toggleExtras('zoom_anim',this.checked)"/> Zoom Animation <br />
+					<input type="checkbox" name="enable" value="multiple_trace" checked="true" onclick="window.toggleExtras('multiple_trace',this.checked)"/> Multiple Trace <br />
+					<input type="checkbox" name="enable" value="mmzi_point" checked="true" onclick="window.toggleExtras('mmzi_point',this.checked)"/> Max/Min/Zero/Intersection Point <br />
+					<input type="checkbox" name="enable" value="keep_last_trace" checked="true" onclick="window.toggleExtras('keep_last_trace',this.checked)"/> Keep last trace point <br />
+					<input type="checkbox" name="enable" value="help_dialog" checked="true" onclick="window.toggleExtras('help_dialog',this.checked)"/> Toolbox help dialog <br />
+					<input type="checkbox" name="enable" value="help_dialog" checked="true" onclick="plotSeparate = this.checked;"/> Plot graph types separately <br />
+				</div>
+				<div class="clear"></div>
+					<br />
+
+				<input id="default_settings" style="float:left;" type="button" value="Default Settings" onClick="restoreDefaults()"/>
+			  </form>
+			  </div>
+
+			  <div id="share-url"><div style="float:left;"><b>Graph URL:</b></div><input id="url" type="text"/> <a class="faux_link" onclick="deleteURL()"><img style="margin:3px 0px 0px 5px;" title="delete" src="img/equation_delete.png"></a></div>
+			  <div class="clear"></div>
+
+			</div><!-- end content div -->
+
+			<div id="calc">
+			  <h3>Basic Calculator</h3>
+			  <!--
+			  <ul>
+				<li>&bull; Type an operation (ex: 5+6) and hit ENTER to calculate.</li>
+				<li>&bull; Access history using the up and down arrow keys.</li>
+			  </ul>
+			  -->
+			  <div id="concont" class="container">
+				<form name="text">
+				  <textarea id="consoleinput" style="color:#afafaf;" name="text" wrap="off" onKeyDown="con.key(event)" onFocus="clearConsoleDefault();" rows="1">Ex: Type 5+6 and hit ENTER</textarea><br>
+				  <input type="button" value="ENTER" onClick="con.enter();document.text.text.focus();" />
+				  <input type="button" value="Clear Screen" onClick="con.output.innerHTML='';document.text.text.focus();" />
+				  <!-- <input type="button" value="Clear Text" onClick="document.text.text.value='';document.text.text.focus();" />
+					<input type="button" value="Clear History" onClick="con.inarray = [];con.hcount=-1;document.text.text.focus();" /> -->
+				</form>
+			  </div>
+			</div> <!-- end calc div -->
+		  </div> <!-- end left div -->
+
+		  <div id="right">
+			<div id="graph">
+				<div id="fnSelect">
+					<span class="fnSelectTitle">Select functions:</span><br />
+					<div align="center">
+						<select style="width:300px;" id="fnSelect1" onChange="fnSelectChange()">
+							<option value="fx">Function</option>
+						</select><br />
+						<select style="width:300px;" id="fnSelect2" onChange="fnSelectChange()">
+							<option value="fx">Function</option>
+						</select>
+						<input id="hide_fnSelect" type="button" value="Hide" onClick="hideFnSelect()" />
+					</div>
+				</div>
+				<!-- SVG Graph Object -->
+				<object data="plot.xml" type="text/xml" width="512" height="512">
+				</object>
+			</div>
+		  </div> <!-- end right div -->
+		  <div class="clear"></div>
+		</div> <!-- end main content-->
+		<div id="rightBanner">
+			<script type="text/javascript"><!--
+				google_ad_client = "ca-pub-6597342191018566";
+				/* Sidebar */
+				google_ad_slot = "6358401879";
+				google_ad_width = 160;
+				google_ad_height = 600;
+				//-->
+				</script>
+				<script type="text/javascript"
+				src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+			</script>
+		</div>
+    </div> <!-- end site-wrapper -->
+    <div class="clear"></div>
+
+    <!-- Google Analytics Script -->
+    <script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-8840663-1");
+pageTracker._trackPageview();
+} catch(err) {}</script>
+  </body>
+</html>

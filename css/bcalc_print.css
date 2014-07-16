@@ -1,0 +1,24 @@
+body {
+	text-align:center;
+	background-color:#ffffff;
+	font-family:trebuchet ms, lucida sans, sans-serif;
+	font-size:11pt;
+}
+.clear {
+	clear:both;
+}
+
+#graph {
+	position:relative;
+	float:left;
+	width:512px;
+	margin:5px;
+}
+#equations {
+	position:relative;
+	float:left;
+	width:400px;
+	height:512px;
+	margin:5px;
+	border:1px solid #dfdfdf;
+}
